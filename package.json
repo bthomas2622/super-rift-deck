@@ -1,0 +1,22 @@
+{
+  "name": "riftbuilder",
+  "version": "1.0.0",
+  "description": "Riftbound TCG Deckbuilder for GitHub Pages",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "fetch-cards": "node scripts/fetch-cards.mjs"
+  },
+  "keywords": [
+    "riftbound",
+    "tcg",
+    "deckbuilder"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "vite": "^5.4.21"
+  }
+}

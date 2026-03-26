@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Riftbound Deckbuilder</title>
+  <link rel="stylesheet" href="./styles/main.css" />
+</head>
+<body>
+  <header class="app-header">
+    <h1 class="app-title">Riftbound Deckbuilder</h1>
+  </header>
+  <main class="app-layout">
+    <section class="card-browser">
+      <div id="filters" class="filters-bar"></div>
+      <div id="card-grid" class="card-grid"></div>
+    </section>
+    <aside id="deck-panel" class="deck-panel"></aside>
+  </main>
+
+  <!-- Card preview overlay -->
+  <div id="card-preview" class="card-preview hidden">
+    <img id="card-preview-img" src="" alt="Card preview" />
+  </div>
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
