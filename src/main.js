@@ -6,6 +6,7 @@
 import { createFilterState, renderFilters, applyFilters, filterStateToParams, filterStateFromParams, sortCards } from './components/filters.js';
 import { renderCardGrid } from './components/card-grid.js';
 import { renderDeckPanel } from './components/deck-panel.js';
+import { renderDeckDetails } from './components/deck-details.js';
 
 // ---- State ----
 
@@ -30,8 +31,28 @@ const deckState = {
 const filtersEl = document.getElementById('filters');
 const gridEl = document.getElementById('card-grid');
 const deckEl = document.getElementById('deck-panel');
+const detailsEl = document.getElementById('deck-details');
 const previewEl = document.getElementById('card-preview');
 const previewImg = document.getElementById('card-preview-img');
+const viewCardBtn = document.getElementById('view-card');
+const viewDetailsBtn = document.getElementById('view-details');
+
+let activeView = 'card'; // 'card' or 'details'
+
+function setActiveView(view) {
+  activeView = view;
+  viewCardBtn.classList.toggle('active', view === 'card');
+  viewDetailsBtn.classList.toggle('active', view === 'details');
+  gridEl.classList.toggle('hidden', view !== 'card');
+  filtersEl.classList.toggle('hidden', view !== 'card');
+  detailsEl.classList.toggle('hidden', view !== 'details');
+  if (view === 'details') {
+    renderDeckDetails(detailsEl, deckState);
+  }
+}
+
+viewCardBtn.addEventListener('click', () => setActiveView('card'));
+viewDetailsBtn.addEventListener('click', () => setActiveView('details'));
 
 // ---- Data loading ----
 
@@ -123,6 +144,10 @@ function refresh() {
     onExport: exportDeck,
     onImport: importDeck,
   });
+
+  if (activeView === 'details') {
+    renderDeckDetails(detailsEl, deckState);
+  }
 }
 
 // ---- Card preview ----
