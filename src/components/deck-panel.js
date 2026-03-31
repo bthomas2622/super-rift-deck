@@ -4,6 +4,7 @@
  */
 
 import { validateDeck } from './deck-validation.js';
+import { BANNED_CARDS } from './filters.js';
 
 const SECTIONS = [
   { key: 'legend', title: 'Legend', target: 1, isSingle: true },
@@ -133,13 +134,14 @@ function getSectionCount(deckState, key) {
 
 function makeCardEntry(name, qty, energy, onRemove) {
   const li = el('li', 'deck-card-entry');
+  if (BANNED_CARDS.has(name)) li.classList.add('banned');
 
   const costEl = el('span', 'deck-card-cost');
   costEl.textContent = energy ?? '—';
   li.appendChild(costEl);
 
   const nameEl = el('span', 'deck-card-name');
-  nameEl.textContent = name;
+  nameEl.textContent = BANNED_CARDS.has(name) ? `${name} (banned from Standard Constructed)` : name;
   li.appendChild(nameEl);
 
   const qtyDiv = el('div', 'deck-card-qty');
@@ -155,13 +157,14 @@ function makeCardEntry(name, qty, energy, onRemove) {
 
 function makeCardEntryWithQty(name, qty, energy, onMinus, onPlus, onRemove) {
   const li = el('li', 'deck-card-entry');
+  if (BANNED_CARDS.has(name)) li.classList.add('banned');
 
   const costEl = el('span', 'deck-card-cost');
   costEl.textContent = energy ?? '—';
   li.appendChild(costEl);
 
   const nameEl = el('span', 'deck-card-name');
-  nameEl.textContent = name;
+  nameEl.textContent = BANNED_CARDS.has(name) ? `${name} (banned from Standard Constructed)` : name;
   li.appendChild(nameEl);
 
   const qtyDiv = el('div', 'deck-card-qty');

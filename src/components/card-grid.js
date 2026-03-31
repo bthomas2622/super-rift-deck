@@ -2,6 +2,8 @@
  * Card grid component — renders the filterable card image grid.
  */
 
+import { BANNED_CARDS } from './filters.js';
+
 export function renderCardGrid(container, cards, deckState, onAdd, onPreview) {
   container.innerHTML = '';
 

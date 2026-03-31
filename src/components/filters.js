@@ -3,6 +3,16 @@
  */
 
 const DOMAINS = ['Fury', 'Calm', 'Mind', 'Body', 'Chaos', 'Order'];
+
+export const BANNED_CARDS = new Set([
+  'Called Shot',
+  'Draven - Vanquisher',
+  'Fight or Flight',
+  'Scrapheap',
+  'The Dreaming Tree',
+  'Obelisk of Power',
+  "Reaver's Row",
+]);
 const ENERGY_VALUES = [0, 1, 2, 3, 4, 5, 6, 7, 8]; // 8 means 8+
 const DECK_TABS = ['All', 'Legend', 'Main Deck', 'Battlefield', 'Rune'];
 
@@ -33,6 +43,7 @@ export function createFilterState() {
     sort: 'collector',
     sortDir: 'asc',
     tab: 'All',
+    hideBanned: true,
   };
 }
 
@@ -170,6 +181,26 @@ export function renderFilters(container, filterState, indexes, sets, onChange, o
   row4.appendChild(dirBtn);
 
   container.appendChild(row4);
+
+  // Row 5: Banned cards toggle
+  const row5 = el('div', 'filter-row');
+
+  const bannedLabel = document.createElement('label');
+  bannedLabel.className = 'filter-toggle-label';
+  const bannedCheckbox = document.createElement('input');
+  bannedCheckbox.type = 'checkbox';
+  bannedCheckbox.checked = filterState.hideBanned;
+  bannedCheckbox.addEventListener('change', () => {
+    filterState.hideBanned = bannedCheckbox.checked;
+    onChange();
+  });
+  bannedLabel.appendChild(bannedCheckbox);
+  const bannedText = document.createElement('span');
+  bannedText.textContent = ' Hide cards banned from Standard Constructed';
+  bannedLabel.appendChild(bannedText);
+  row5.appendChild(bannedLabel);
+
+  container.appendChild(row5);
 }
 
 /**
@@ -235,6 +266,11 @@ export function applyFilters(cards, filterState, sets) {
       if (!filterState.rarities.has(card.classification?.rarity ?? '')) return false;
     }
 
+    // Banned filter
+    if (filterState.hideBanned && BANNED_CARDS.has(card.name)) {
+      return false;
+    }
+
     // Energy cost filter
     if (filterState.energy !== null) {
       const cost = card.attributes?.energy;
@@ -263,6 +299,7 @@ export function filterStateToParams(state) {
   if (state.energy !== null) params.set('energy', String(state.energy));
   if (state.sort !== 'collector') params.set('sort', state.sort);
   if (state.sortDir !== 'asc') params.set('dir', state.sortDir);
+  if (state.hideBanned) params.set('hideBanned', '1');
   return params;
 }
 
@@ -279,6 +316,7 @@ export function filterStateFromParams(state, params) {
   if (params.has('energy')) state.energy = parseInt(params.get('energy'), 10);
   if (params.has('sort')) state.sort = params.get('sort');
   if (params.has('dir')) state.sortDir = params.get('dir');
+  if (params.has('hideBanned')) state.hideBanned = params.get('hideBanned') === '1';
 }
 
 // ---- Sorting ----
