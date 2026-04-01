@@ -1,0 +1,104 @@
+{
+  "metadata": {
+    "name": "Budget Jinx",
+    "author": "Egosomniac"
+  },
+  "deck": {
+    "Main Board": [
+      {
+        "id": "OGN-030",
+        "count": "1"
+      },
+      {
+        "id": "OGN-298",
+        "count": "1"
+      },
+      {
+        "id": "OGN-291",
+        "count": "1"
+      },
+      {
+        "id": "OGN-290",
+        "count": "1"
+      },
+      {
+        "id": "OGN-251",
+        "count": "1"
+      },
+      {
+        "id": "OGN-197",
+        "count": "3"
+      },
+      {
+        "id": "OGN-185",
+        "count": "3"
+      },
+      {
+        "id": "OGN-173",
+        "count": "3"
+      },
+      {
+        "id": "OGN-168",
+        "count": "3"
+      },
+      {
+        "id": "OGN-166",
+        "count": "4"
+      },
+      {
+        "id": "OGN-036",
+        "count": "3"
+      },
+      {
+        "id": "OGN-029",
+        "count": "1"
+      },
+      {
+        "id": "OGN-028",
+        "count": "2"
+      },
+      {
+        "id": "OGN-021",
+        "count": "3"
+      },
+      {
+        "id": "OGN-013",
+        "count": "3"
+      },
+      {
+        "id": "OGN-012",
+        "count": "3"
+      },
+      {
+        "id": "OGN-009",
+        "count": "3"
+      },
+      {
+        "id": "OGN-007",
+        "count": "8"
+      },
+      {
+        "id": "OGN-006",
+        "count": "3"
+      },
+      {
+        "id": "OGN-004",
+        "count": "3"
+      },
+      {
+        "id": "OGN-003",
+        "count": "3"
+      }
+    ],
+    "Side Board": [
+      {
+        "id": "OGN-002",
+        "count": "3"
+      },
+      {
+        "id": "OGN-169",
+        "count": "3"
+      }
+    ]
+  }
+}

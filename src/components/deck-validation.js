@@ -68,16 +68,7 @@ export function validateDeck(deckState) {
       }
     }
 
-    // Check battlefields domain identity
-    for (const [name, entry] of deckState.battlefields) {
-      const cardDomains = entry.card.classification?.domain ?? [];
-      if (cardDomains.length > 0 && !domainIdentityMatch(cardDomains, legendDomains)) {
-        msgs.push({
-          type: 'error',
-          message: `Battlefield "${name}" does not match your Legend's Domain Identity.`,
-        });
-      }
-    }
+    // Battlefields do not need to match Legend's domain identity
 
     // Check champion domain identity
     if (champion) {
@@ -100,10 +91,13 @@ export function validateDeck(deckState) {
   for (const [name, entry] of deckState.sideboard) increment(allNameCounts, name, entry.count);
 
   for (const [name, count] of allNameCounts) {
-    if (count > 3) {
+    // Runes can have up to 12 copies each; other cards max 3
+    const isRune = deckState.runes.has(name);
+    const maxCopies = isRune ? 12 : 3;
+    if (count > maxCopies) {
       msgs.push({
         type: 'error',
-        message: `"${name}" has ${count} copies (max 3).`,
+        message: `"${name}" has ${count} copies (max ${maxCopies}).`,
       });
     }
   }
@@ -137,11 +131,11 @@ export function validateDeck(deckState) {
     }
   }
 
-  // ---- Main Deck size ----
-  if (mainDeckTotal < 40) {
+  // ---- Main Deck size (39+ since Chosen Champion counts toward the 40) ----
+  if (mainDeckTotal < 39) {
     msgs.push({
       type: 'warning',
-      message: `Main Deck has ${mainDeckTotal} cards (need at least 40).`,
+      message: `Main Deck has ${mainDeckTotal} cards (need at least 39, plus Chosen Champion = 40).`,
     });
   }
 

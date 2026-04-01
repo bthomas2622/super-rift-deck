@@ -7,6 +7,7 @@ import { createFilterState, renderFilters, applyFilters, filterStateToParams, fi
 import { renderCardGrid } from './components/card-grid.js';
 import { renderDeckPanel } from './components/deck-panel.js';
 import { renderDeckDetails, computeRuneSplit } from './components/deck-details.js';
+import { showIOModal, exportDeckAs, importDeckFrom } from './components/deck-io.js';
 
 // ---- State ----
 
@@ -35,23 +36,31 @@ const detailsEl = document.getElementById('deck-details');
 const previewEl = document.getElementById('card-preview');
 const previewImg = document.getElementById('card-preview-img');
 const viewCardBtn = document.getElementById('view-card');
+const viewDeckBtn = document.getElementById('view-deck');
 const viewDetailsBtn = document.getElementById('view-details');
+const deckGridEl = document.getElementById('deck-grid');
 
-let activeView = 'card'; // 'card' or 'details'
+let activeView = 'card'; // 'card', 'deck', or 'details'
 
 function setActiveView(view) {
   activeView = view;
   viewCardBtn.classList.toggle('active', view === 'card');
+  viewDeckBtn.classList.toggle('active', view === 'deck');
   viewDetailsBtn.classList.toggle('active', view === 'details');
   gridEl.classList.toggle('hidden', view !== 'card');
-  filtersEl.classList.toggle('hidden', view !== 'card');
+  filtersEl.classList.toggle('hidden', view === 'details');
+  deckGridEl.classList.toggle('hidden', view !== 'deck');
   detailsEl.classList.toggle('hidden', view !== 'details');
+  if (view === 'deck') {
+    renderDeckGrid();
+  }
   if (view === 'details') {
     renderDeckDetails(detailsEl, deckState);
   }
 }
 
 viewCardBtn.addEventListener('click', () => setActiveView('card'));
+viewDeckBtn.addEventListener('click', () => setActiveView('deck'));
 viewDetailsBtn.addEventListener('click', () => setActiveView('details'));
 
 // ---- Data loading ----
@@ -144,11 +153,26 @@ function refresh() {
     onExport: exportDeck,
     onImport: importDeck,
     onAutoRunes: autoFillRunes,
+    onRandomLegend: randomLegend,
   });
 
+  if (activeView === 'deck') {
+    renderDeckGrid();
+  }
   if (activeView === 'details') {
     renderDeckDetails(detailsEl, deckState);
   }
+}
+
+function renderDeckGrid() {
+  const deckCards = [];
+  if (deckState.legend) deckCards.push(deckState.legend);
+  if (deckState.champion) deckCards.push(deckState.champion);
+  for (const [, entry] of deckState.mainDeck) deckCards.push(entry.card);
+  for (const [, entry] of deckState.runes) deckCards.push(entry.card);
+  for (const [, entry] of deckState.battlefields) deckCards.push(entry.card);
+  for (const [, entry] of deckState.sideboard) deckCards.push(entry.card);
+  renderCardGrid(deckGridEl, deckCards, deckState, addCardToDeck, showPreview, { showMaxed: false });
 }
 
 // ---- Card preview ----
@@ -188,7 +212,7 @@ function addCardToDeck(card) {
 
   // Rune slot
   if (type === 'rune') {
-    addToMap(deckState.runes, card, 3);
+    addToMap(deckState.runes, card, 12);
     saveDeckToStorage();
     refresh();
     return;
@@ -285,100 +309,52 @@ function autoFillRunes() {
   refresh();
 }
 
+function randomLegend() {
+  const legends = allCards.filter(c =>
+    (c.classification?.type ?? '').toLowerCase() === 'legend' &&
+    !c.metadata?.alternate_art
+  );
+  if (legends.length === 0) return;
+  deckState.legend = legends[Math.floor(Math.random() * legends.length)];
+  saveDeckToStorage();
+  refresh();
+}
+
 // ---- Export / Import ----
 
 function exportDeck() {
-  const lines = [];
-  if (deckState.legend) lines.push(`[Legend] ${deckState.legend.name}`);
-  if (deckState.champion) lines.push(`[Champion] ${deckState.champion.name}`);
-
-  for (const [name, entry] of deckState.battlefields) {
-    lines.push(`[Battlefield] ${entry.count}x ${name}`);
-  }
-  for (const [name, entry] of deckState.runes) {
-    lines.push(`[Rune] ${entry.count}x ${name}`);
-  }
-  for (const [name, entry] of deckState.mainDeck) {
-    lines.push(`${entry.count}x ${name}`);
-  }
-  if (deckState.sideboard.size > 0) {
-    lines.push('');
-    lines.push('// Sideboard');
-    for (const [name, entry] of deckState.sideboard) {
-      lines.push(`${entry.count}x ${name}`);
-    }
-  }
-
-  const text = lines.join('\n');
-  navigator.clipboard.writeText(text).then(() => {
-    alert('Deck copied to clipboard!');
-  }).catch(() => {
-    // Fallback: show in prompt
-    prompt('Deck list (copy manually):', text);
+  showIOModal('export', {
+    onExport(formatId, fileTypeId) {
+      return exportDeckAs(deckState, formatId, fileTypeId);
+    },
+    onImport() {},
   });
 }
 
 function importDeck() {
-  const text = prompt('Paste your deck list:');
-  if (!text) return;
+  showIOModal('import', {
+    onExport() { return ''; },
+    onImport(text, formatId, fileTypeId) {
+      const result = importDeckFrom(text, formatId, fileTypeId, allCards);
+      if (!result) return;
 
-  // Simple parser
-  clearDeck();
-  const cardsByName = new Map();
-  for (const card of allCards) {
-    if (!cardsByName.has(card.name)) {
-      cardsByName.set(card.name, card);
-    }
-  }
+      // Apply imported deck
+      deckState.legend = result.legend;
+      deckState.champion = result.champion;
+      deckState.mainDeck.clear();
+      deckState.runes.clear();
+      deckState.battlefields.clear();
+      deckState.sideboard.clear();
 
-  for (const line of text.split('\n')) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('//')) continue;
+      for (const [name, entry] of result.mainDeck) deckState.mainDeck.set(name, entry);
+      for (const [name, entry] of result.runes) deckState.runes.set(name, entry);
+      for (const [name, entry] of result.battlefields) deckState.battlefields.set(name, entry);
+      for (const [name, entry] of result.sideboard) deckState.sideboard.set(name, entry);
 
-    // [Legend] Name
-    const legendMatch = trimmed.match(/^\[Legend\]\s*(.+)$/i);
-    if (legendMatch) {
-      const card = cardsByName.get(legendMatch[1].trim());
-      if (card) deckState.legend = card;
-      continue;
-    }
-
-    // [Champion] Name
-    const champMatch = trimmed.match(/^\[Champion\]\s*(.+)$/i);
-    if (champMatch) {
-      const card = cardsByName.get(champMatch[1].trim());
-      if (card) deckState.champion = card;
-      continue;
-    }
-
-    // [Battlefield] Nx Name
-    const bfMatch = trimmed.match(/^\[Battlefield\]\s*(\d+)x\s+(.+)$/i);
-    if (bfMatch) {
-      const card = cardsByName.get(bfMatch[2].trim());
-      if (card) deckState.battlefields.set(card.name, { card, count: parseInt(bfMatch[1]) });
-      continue;
-    }
-
-    // [Rune] Nx Name
-    const runeMatch = trimmed.match(/^\[Rune\]\s*(\d+)x\s+(.+)$/i);
-    if (runeMatch) {
-      const card = cardsByName.get(runeMatch[2].trim());
-      if (card) deckState.runes.set(card.name, { card, count: parseInt(runeMatch[1]) });
-      continue;
-    }
-
-    // Nx Name (main deck or sideboard)
-    const cardMatch = trimmed.match(/^(\d+)x\s+(.+)$/);
-    if (cardMatch) {
-      const card = cardsByName.get(cardMatch[2].trim());
-      if (card) {
-        deckState.mainDeck.set(card.name, { card, count: parseInt(cardMatch[1]) });
-      }
-    }
-  }
-
-  saveDeckToStorage();
-  refresh();
+      saveDeckToStorage();
+      refresh();
+    },
+  });
 }
 
 // ---- LocalStorage persistence ----

@@ -1,0 +1,36 @@
+Legend:
+1 Jinx, Loose Cannon
+
+Champion:
+1 Jinx, Demolitionist
+
+MainDeck:
+3 Chemtech Enforcer
+3 Flame Chompers
+3 Noxus Hopeful
+3 Pouty Poro
+3 Dangerous Duo
+3 Gust
+3 Ride the Wind
+3 Stacked Deck
+3 Traveling Merchant
+2 Mystic Poro
+1 Sun Disc
+1 Falling Star
+3 Vi, Destructive
+3 Nocturne, Horrifying
+2 Darius, Trifarian
+
+Battlefields:
+1 Reaver's Row
+1 The Arena's Greatest
+1 Zaun Warrens
+
+Runes:
+9 Fury Rune
+3 Chaos Rune
+
+Sideboard:
+3 Rebuke
+3 Sneaky Deckhand
+2 Fight or Flight

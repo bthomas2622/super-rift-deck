@@ -11,11 +11,11 @@ const SECTIONS = [
   { key: 'champion', title: 'Champion', target: 1, isSingle: true },
   { key: 'battlefields', title: 'Battlefields', target: 3 },
   { key: 'runes', title: 'Rune Deck', target: 12 },
-  { key: 'mainDeck', title: 'Main Deck', target: 40, isMin: true },
+  { key: 'mainDeck', title: 'Main Deck', target: 39, isMin: true },
   { key: 'sideboard', title: 'Sideboard', target: 8, optional: true },
 ];
 
-export function renderDeckPanel(container, deckState, { onRemove, onChangeQty, onClear, onExport, onImport, onAutoRunes }) {
+export function renderDeckPanel(container, deckState, { onRemove, onChangeQty, onClear, onExport, onImport, onAutoRunes, onRandomLegend }) {
   container.innerHTML = '';
 
   // Header
@@ -77,6 +77,14 @@ export function renderDeckPanel(container, deckState, { onRemove, onChangeQty, o
       autoBtn.title = 'Auto-fill runes based on deck power costs';
       autoBtn.addEventListener('click', onAutoRunes);
       secHeader.appendChild(autoBtn);
+    }
+
+    if (sec.key === 'legend' && onRandomLegend) {
+      const randBtn = el('button', 'deck-auto-btn');
+      randBtn.textContent = 'Random';
+      randBtn.title = 'Pick a random Legend';
+      randBtn.addEventListener('click', onRandomLegend);
+      secHeader.appendChild(randBtn);
     }
 
     const count = el('span', 'deck-section-count');

@@ -4,7 +4,7 @@
 
 import { BANNED_CARDS } from './filters.js';
 
-export function renderCardGrid(container, cards, deckState, onAdd, onPreview) {
+export function renderCardGrid(container, cards, deckState, onAdd, onPreview, { showMaxed = true } = {}) {
   container.innerHTML = '';
 
   if (!cards || cards.length === 0) {
@@ -24,7 +24,7 @@ export function renderCardGrid(container, cards, deckState, onAdd, onPreview) {
 
     const inDeckCount = getDeckCount(card, deckState);
     const maxCopies = getMaxCopies(card);
-    if (inDeckCount >= maxCopies) {
+    if (showMaxed && inDeckCount >= maxCopies) {
       cell.classList.add('maxed');
     }
 
