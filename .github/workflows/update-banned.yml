@@ -1,8 +1,6 @@
 name: Update Banned Cards
 
 on:
-  schedule:
-    - cron: '30 3 * * *' # Nightly at 3:30 AM UTC
   workflow_dispatch: # Manual trigger
 
 permissions:

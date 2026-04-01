@@ -22,7 +22,12 @@ function sleep(ms) {
 }
 
 async function fetchJSON(url) {
-  const res = await fetch(url);
+  const res = await fetch(url, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (compatible; RiftBuilder/1.0; +https://github.com/bthomas2622/super-rift-deck)',
+      'Accept': 'application/json',
+    },
+  });
   if (!res.ok) {
     throw new Error(`HTTP ${res.status} for ${url}: ${await res.text()}`);
   }

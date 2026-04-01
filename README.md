@@ -42,7 +42,7 @@ npm run fetch-cards
 npm run dev
 ```
 
-Opens at `http://localhost:5173/riftbuilder/`.
+Opens at `http://localhost:5173/super-rift-deck/`.
 
 ### Production Build
 
@@ -55,7 +55,7 @@ Output goes to `dist/`.
 ## Project Structure
 
 ```
-riftbuilder/
+super-rift-deck/
 ├── .github/
 │   └── workflows/
 │       ├── fetch-cards.yml      # Nightly card data fetch (cron + manual)

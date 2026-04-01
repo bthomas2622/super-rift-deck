@@ -15,7 +15,7 @@ const SECTIONS = [
   { key: 'sideboard', title: 'Sideboard', target: 8, optional: true },
 ];
 
-export function renderDeckPanel(container, deckState, { onRemove, onChangeQty, onClear, onExport, onImport }) {
+export function renderDeckPanel(container, deckState, { onRemove, onChangeQty, onClear, onExport, onImport, onAutoRunes }) {
   container.innerHTML = '';
 
   // Header
@@ -70,6 +70,14 @@ export function renderDeckPanel(container, deckState, { onRemove, onChangeQty, o
     const title = el('span', 'deck-section-title');
     title.textContent = sec.title;
     secHeader.appendChild(title);
+
+    if (sec.key === 'runes' && onAutoRunes) {
+      const autoBtn = el('button', 'deck-auto-btn');
+      autoBtn.textContent = 'Auto';
+      autoBtn.title = 'Auto-fill runes based on deck power costs';
+      autoBtn.addEventListener('click', onAutoRunes);
+      secHeader.appendChild(autoBtn);
+    }
 
     const count = el('span', 'deck-section-count');
     const current = getSectionCount(deckState, sec.key);

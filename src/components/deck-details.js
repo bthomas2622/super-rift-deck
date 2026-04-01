@@ -150,6 +150,45 @@ const DOMAIN_COLORS = {
   Order: '#f1c40f',
 };
 
+/**
+ * Compute recommended rune split (12 runes) based on power cost domain distribution.
+ * Returns an array of { domain, runes } or empty array if no power costs.
+ */
+export function computeRuneSplit(deckState) {
+  const allCards = getAllDeckCards(deckState);
+  const domainCounts = new Map();
+  let totalPower = 0;
+
+  for (const { card, count } of allCards) {
+    const power = card.attributes?.power;
+    if (power == null || power === 0) continue;
+    const domains = card.classification?.domain ?? [];
+    const totalCardPower = power * count;
+    totalPower += totalCardPower;
+    for (const domain of domains) {
+      domainCounts.set(domain, (domainCounts.get(domain) ?? 0) + totalCardPower);
+    }
+  }
+
+  if (domainCounts.size === 0 || totalPower === 0) return [];
+
+  const TOTAL_RUNES = 12;
+  const sorted = Array.from(domainCounts.entries()).sort((a, b) => b[1] - a[1]);
+  const rawRunes = sorted.map(([domain, count]) => ({
+    domain,
+    exact: (count / totalPower) * TOTAL_RUNES,
+  }));
+
+  const allocated = rawRunes.map(r => ({ ...r, runes: Math.floor(r.exact) }));
+  let remaining = TOTAL_RUNES - allocated.reduce((sum, r) => sum + r.runes, 0);
+  const byFraction = [...allocated].sort((a, b) => (b.exact - b.runes) - (a.exact - a.runes));
+  for (let i = 0; i < remaining; i++) {
+    byFraction[i].runes++;
+  }
+
+  return allocated.filter(r => r.runes > 0).map(({ domain, runes }) => ({ domain, runes }));
+}
+
 function renderPowerCostDistribution(allCards) {
   const section = el('div', 'details-section');
 

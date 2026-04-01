@@ -6,7 +6,7 @@
 import { createFilterState, renderFilters, applyFilters, filterStateToParams, filterStateFromParams, sortCards } from './components/filters.js';
 import { renderCardGrid } from './components/card-grid.js';
 import { renderDeckPanel } from './components/deck-panel.js';
-import { renderDeckDetails } from './components/deck-details.js';
+import { renderDeckDetails, computeRuneSplit } from './components/deck-details.js';
 
 // ---- State ----
 
@@ -143,6 +143,7 @@ function refresh() {
     onClear: clearDeck,
     onExport: exportDeck,
     onImport: importDeck,
+    onAutoRunes: autoFillRunes,
   });
 
   if (activeView === 'details') {
@@ -252,6 +253,34 @@ function clearDeck() {
   deckState.runes.clear();
   deckState.battlefields.clear();
   deckState.sideboard.clear();
+  saveDeckToStorage();
+  refresh();
+}
+
+function autoFillRunes() {
+  const split = computeRuneSplit(deckState);
+  if (split.length === 0) return;
+
+  // Find Common-rarity, non-alternate-art rune card for each domain
+  const runesByDomain = new Map();
+  for (const card of allCards) {
+    if ((card.classification?.type ?? '').toLowerCase() !== 'rune') continue;
+    if ((card.classification?.rarity ?? '').toLowerCase() !== 'common') continue;
+    if (card.metadata?.alternate_art) continue;
+    const domains = card.classification?.domain ?? [];
+    for (const d of domains) {
+      if (!runesByDomain.has(d)) runesByDomain.set(d, card);
+    }
+  }
+
+  deckState.runes.clear();
+  for (const { domain, runes } of split) {
+    const card = runesByDomain.get(domain);
+    if (card && runes > 0) {
+      deckState.runes.set(card.name, { card, count: runes });
+    }
+  }
+
   saveDeckToStorage();
   refresh();
 }
