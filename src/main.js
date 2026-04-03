@@ -8,6 +8,7 @@ import { renderCardGrid } from './components/card-grid.js';
 import { renderDeckPanel } from './components/deck-panel.js';
 import { renderDeckDetails, computeRuneSplit } from './components/deck-details.js';
 import { showIOModal, exportDeckAs, importDeckFrom } from './components/deck-io.js';
+import { renderHandSimulator } from './components/hand-simulator.js';
 
 // ---- State ----
 
@@ -38,30 +39,38 @@ const previewImg = document.getElementById('card-preview-img');
 const viewCardBtn = document.getElementById('view-card');
 const viewDeckBtn = document.getElementById('view-deck');
 const viewDetailsBtn = document.getElementById('view-details');
+const viewHandBtn = document.getElementById('view-hand');
 const deckGridEl = document.getElementById('deck-grid');
+const handSimEl = document.getElementById('hand-simulator');
 
-let activeView = 'card'; // 'card', 'deck', or 'details'
+let activeView = 'card'; // 'card', 'deck', 'details', or 'hand'
 
 function setActiveView(view) {
   activeView = view;
   viewCardBtn.classList.toggle('active', view === 'card');
   viewDeckBtn.classList.toggle('active', view === 'deck');
   viewDetailsBtn.classList.toggle('active', view === 'details');
+  viewHandBtn.classList.toggle('active', view === 'hand');
   gridEl.classList.toggle('hidden', view !== 'card');
-  filtersEl.classList.toggle('hidden', view === 'details');
+  filtersEl.classList.toggle('hidden', view === 'details' || view === 'hand');
   deckGridEl.classList.toggle('hidden', view !== 'deck');
   detailsEl.classList.toggle('hidden', view !== 'details');
+  handSimEl.classList.toggle('hidden', view !== 'hand');
   if (view === 'deck') {
     renderDeckGrid();
   }
   if (view === 'details') {
     renderDeckDetails(detailsEl, deckState);
   }
+  if (view === 'hand') {
+    renderHandSimulator(handSimEl, deckState, showPreview);
+  }
 }
 
 viewCardBtn.addEventListener('click', () => setActiveView('card'));
 viewDeckBtn.addEventListener('click', () => setActiveView('deck'));
 viewDetailsBtn.addEventListener('click', () => setActiveView('details'));
+viewHandBtn.addEventListener('click', () => setActiveView('hand'));
 
 // ---- Data loading ----
 
@@ -154,6 +163,7 @@ function refresh() {
     onImport: importDeck,
     onAutoRunes: autoFillRunes,
     onRandomLegend: randomLegend,
+    onSampleDeck: loadSampleDeck,
   });
 
   if (activeView === 'deck') {
@@ -161,6 +171,9 @@ function refresh() {
   }
   if (activeView === 'details') {
     renderDeckDetails(detailsEl, deckState);
+  }
+  if (activeView === 'hand') {
+    renderHandSimulator(handSimEl, deckState, showPreview);
   }
 }
 
@@ -420,6 +433,85 @@ function restoreMap(map, obj, cardsByName) {
     const card = cardsByName.get(name);
     if (card) map.set(name, { card, count });
   }
+}
+
+// ---- Sample Deck ----
+
+const SAMPLE_DECK = {
+  "Main Board": [
+    { id: "OGN-030", count: 1 },
+    { id: "OGN-298", count: 1 },
+    { id: "OGN-291", count: 1 },
+    { id: "OGN-290", count: 1 },
+    { id: "OGN-251", count: 1 },
+    { id: "OGN-197", count: 3 },
+    { id: "OGN-185", count: 3 },
+    { id: "OGN-173", count: 3 },
+    { id: "OGN-168", count: 3 },
+    { id: "OGN-166", count: 4 },
+    { id: "OGN-036", count: 3 },
+    { id: "OGN-029", count: 1 },
+    { id: "OGN-028", count: 2 },
+    { id: "OGN-021", count: 3 },
+    { id: "OGN-013", count: 3 },
+    { id: "OGN-012", count: 3 },
+    { id: "OGN-009", count: 3 },
+    { id: "OGN-007", count: 8 },
+    { id: "OGN-006", count: 3 },
+    { id: "OGN-004", count: 3 },
+    { id: "OGN-003", count: 3 },
+  ],
+  "Side Board": [
+    { id: "OGN-002", count: 3 },
+    { id: "OGN-169", count: 3 },
+  ],
+};
+
+function loadSampleDeck() {
+  // Build short-id lookup
+  const byShortId = new Map();
+  for (const card of allCards) {
+    if (card.metadata?.alternate_art || card.metadata?.overnumbered || card.metadata?.signature) continue;
+    const setId = card.set?.set_id ?? '';
+    const col = String(card.collector_number ?? 0).padStart(3, '0');
+    const sid = `${setId}-${col}`;
+    if (!byShortId.has(sid)) byShortId.set(sid, card);
+  }
+
+  deckState.legend = null;
+  deckState.champion = null;
+  deckState.mainDeck.clear();
+  deckState.runes.clear();
+  deckState.battlefields.clear();
+  deckState.sideboard.clear();
+
+  for (const entry of SAMPLE_DECK["Main Board"]) {
+    const card = byShortId.get(entry.id);
+    if (!card) continue;
+    const type = (card.classification?.type ?? '').toLowerCase();
+    const supertype = (card.classification?.supertype ?? '').toLowerCase();
+
+    if (type === 'legend') {
+      deckState.legend = card;
+    } else if (type === 'battlefield') {
+      deckState.battlefields.set(card.name, { card, count: entry.count });
+    } else if (type === 'rune') {
+      deckState.runes.set(card.name, { card, count: entry.count });
+    } else if (supertype === 'champion' && !deckState.champion) {
+      deckState.champion = card;
+    } else {
+      deckState.mainDeck.set(card.name, { card, count: entry.count });
+    }
+  }
+
+  for (const entry of SAMPLE_DECK["Side Board"]) {
+    const card = byShortId.get(entry.id);
+    if (!card) continue;
+    deckState.sideboard.set(card.name, { card, count: entry.count });
+  }
+
+  saveDeckToStorage();
+  refresh();
 }
 
 // ---- Boot ----

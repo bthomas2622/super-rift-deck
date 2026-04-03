@@ -14,6 +14,8 @@ A web-based deckbuilder for **Riftbound**, the Trading Card Game by Riot Games. 
   - Max 3 total Signature cards matching your Legend's champion tag
   - Rune Deck exactly 12, Battlefields exactly 3 with unique names
 - **Import / Export** — Copy deck lists to clipboard or import from text
+- **Sample Deck** — One-click load of a sample Budget Jinx decklist
+- **Hand Simulator** — Draw a simulated opening hand of 4 cards and mulligan up to 2
 - **Persistence** — Deck state saved to localStorage automatically
 
 ## Getting Started
@@ -57,24 +59,35 @@ Output goes to `dist/`.
 ```
 super-rift-deck/
 ├── .github/
+│   ├── skills/
+│   │   └── riftboundrules.md    # Riftbound rules reference for Copilot
 │   └── workflows/
+│       ├── deploy.yml           # Build & deploy to GitHub Pages
 │       ├── fetch-cards.yml      # Nightly card data fetch (cron + manual)
-│       └── deploy.yml           # Build & deploy to GitHub Pages
+│       └── update-banned.yml    # Update banned card list
+├── exampleimportexport/         # Sample deck files for testing import/export
+│   ├── piltoverarchive/
+│   ├── riftboundgg/
+│   └── superriftdeck/
 ├── public/
 │   └── data/
 │       ├── cards.json           # All card data (generated)
 │       ├── sets.json            # Set metadata (generated)
 │       └── indexes.json         # Filter options (generated)
 ├── scripts/
-│   └── fetch-cards.mjs          # Riftcodex API fetch script
+│   ├── fetch-cards.mjs          # Riftcodex API fetch script
+│   └── update-banned.mjs       # Banned card list updater
 ├── src/
 │   ├── index.html               # App shell
 │   ├── main.js                  # Entry point & state management
 │   ├── components/
-│   │   ├── filters.js           # Filter controls & logic
 │   │   ├── card-grid.js         # Card image grid
+│   │   ├── deck-details.js      # Deck analytics (cost/might charts, tags, keywords)
+│   │   ├── deck-io.js           # Deck import/export (multiple formats)
 │   │   ├── deck-panel.js        # Deck sidebar
-│   │   └── deck-validation.js   # Riftbound rules enforcement
+│   │   ├── deck-validation.js   # Riftbound rules enforcement
+│   │   ├── filters.js           # Filter controls & logic
+│   │   └── hand-simulator.js    # Opening hand simulator with mulligan
 │   └── styles/
 │       └── main.css             # Styles
 ├── vite.config.js
@@ -86,6 +99,10 @@ super-rift-deck/
 ### Nightly Card Fetch
 
 Runs daily at 3 AM UTC (and on manual trigger). Fetches the latest card data from the Riftcodex API and commits any changes to `public/data/`.
+
+### Update Banned Cards
+
+Extracts the current banned card list and updates `src/components/filters.js` accordingly.
 
 ### GitHub Pages Deploy
 

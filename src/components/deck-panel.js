@@ -15,7 +15,7 @@ const SECTIONS = [
   { key: 'sideboard', title: 'Sideboard', target: 8, optional: true },
 ];
 
-export function renderDeckPanel(container, deckState, { onRemove, onChangeQty, onClear, onExport, onImport, onAutoRunes, onRandomLegend }) {
+export function renderDeckPanel(container, deckState, { onRemove, onChangeQty, onClear, onExport, onImport, onAutoRunes, onRandomLegend, onSampleDeck }) {
   container.innerHTML = '';
 
   // Header
@@ -136,6 +136,16 @@ export function renderDeckPanel(container, deckState, { onRemove, onChangeQty, o
 
     section.appendChild(list);
     container.appendChild(section);
+  }
+
+  // Sample deck button
+  if (onSampleDeck) {
+    const sampleWrap = el('div', 'deck-sample-wrap');
+    const sampleBtn = el('button', 'deck-sample-btn');
+    sampleBtn.textContent = 'View Sample Deck';
+    sampleBtn.addEventListener('click', onSampleDeck);
+    sampleWrap.appendChild(sampleBtn);
+    container.appendChild(sampleWrap);
   }
 }
 
