@@ -1,4 +1,4 @@
-# Riftbound Deckbuilder
+# Super Rift Deck
 
 A web-based deckbuilder for **Riftbound**, the Trading Card Game by Riot Games. Built as a static site for GitHub Pages.
 
