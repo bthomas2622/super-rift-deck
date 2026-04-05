@@ -14,7 +14,8 @@ A web-based deckbuilder for **Riftbound**, the Trading Card Game by Riot Games. 
   - Max 3 copies of any named card
   - Max 3 total Signature cards matching your Legend's champion tag
   - Rune Deck exactly 12, Battlefields exactly 3 with unique names
-- **Import / Export** — Copy deck lists to clipboard or import from text
+- **Import / Export** — Copy deck lists to clipboard or import from text, supporting multiple formats (Super Rift Deck, Riftbound.gg, PiltoverArchive, Rift Atlas)
+- **Deck Image Export** — Generate a high-resolution PNG snapshot of your deck with section labels, card images, and layout for sharing
 - **Sample Deck** — One-click load of a sample Budget Jinx decklist
 - **Hand Simulator** — Draw a simulated opening hand of 4 cards and mulligan up to 2
 - **Card Preview** — Hover over cards in the deck list to preview them in the main panel, or right-click any card for a full-screen view
@@ -77,6 +78,7 @@ super-rift-deck/
 │   └── superriftdeck/
 ├── public/
 │   └── data/
+│       ├── images/               # Card images (WebP, generated)
 │       ├── cards.json           # All card data (generated)
 │       ├── sets.json            # Set metadata (generated)
 │       └── indexes.json         # Filter options (generated)
@@ -89,6 +91,7 @@ super-rift-deck/
 │   ├── components/
 │   │   ├── card-grid.js         # Card image grid
 │   │   ├── deck-details.js      # Deck analytics (cost/might charts, tags, keywords)
+│   │   ├── deck-image.js        # Deck image export (PNG generation)
 │   │   ├── deck-io.js           # Deck import/export (multiple formats)
 │   │   ├── deck-panel.js        # Deck sidebar
 │   │   ├── deck-validation.js   # Riftbound rules enforcement
@@ -118,7 +121,7 @@ Triggers on push to `main`. Builds the Vite project and deploys to GitHub Pages.
 
 ## Card Data
 
-Card data is sourced from the [Riftcodex API](https://riftcodex.com/docs/endpoints/cards/), an unofficial free Riftbound API. Images are hotlinked from the Riftcodex CDN — no images are stored locally.
+Card data is sourced from the [Riftcodex API](https://riftcodex.com/docs/endpoints/cards/), an unofficial free Riftbound API. Card images are downloaded as WebP files and stored locally in `public/data/images/` for offline use and deck image export.
 
 ## Tech Stack
 
