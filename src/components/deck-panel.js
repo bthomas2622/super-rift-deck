@@ -15,7 +15,7 @@ const SECTIONS = [
   { key: 'sideboard', title: 'Sideboard', target: 8, optional: true },
 ];
 
-export function renderDeckPanel(container, deckState, { onRemove, onChangeQty, onClear, onExport, onImport, onAutoRunes, onRandomLegend, onSampleDeck }) {
+export function renderDeckPanel(container, deckState, { onRemove, onChangeQty, onClear, onExport, onImport, onAutoRunes, onRandomLegend, onSampleDeck, onHover, onHoverEnd }) {
   container.innerHTML = '';
 
   // Header
@@ -111,7 +111,7 @@ export function renderDeckPanel(container, deckState, { onRemove, onChangeQty, o
       if (card) {
         list.appendChild(makeCardEntry(card.name, 1, card.attributes?.energy, () => {
           onRemove(sec.key, card.name);
-        }));
+        }, onHover ? () => onHover(card) : null, onHoverEnd ?? null));
       }
     } else {
       const map = deckState[sec.key];
@@ -130,6 +130,8 @@ export function renderDeckPanel(container, deckState, { onRemove, onChangeQty, o
           () => onChangeQty(sec.key, name, -1),
           () => onChangeQty(sec.key, name, 1),
           () => onRemove(sec.key, name),
+          onHover ? () => onHover(entry.card) : null,
+          onHoverEnd ?? null,
         ));
       }
     }
@@ -158,9 +160,11 @@ function getSectionCount(deckState, key) {
   return n;
 }
 
-function makeCardEntry(name, qty, energy, onRemove) {
+function makeCardEntry(name, qty, energy, onRemove, onHover, onHoverEnd) {
   const li = el('li', 'deck-card-entry');
   if (BANNED_CARDS.has(name)) li.classList.add('banned');
+  if (onHover) li.addEventListener('mouseenter', onHover);
+  if (onHoverEnd) li.addEventListener('mouseleave', onHoverEnd);
 
   const costEl = el('span', 'deck-card-cost');
   costEl.textContent = energy ?? '—';
@@ -181,9 +185,11 @@ function makeCardEntry(name, qty, energy, onRemove) {
   return li;
 }
 
-function makeCardEntryWithQty(name, qty, energy, onMinus, onPlus, onRemove) {
+function makeCardEntryWithQty(name, qty, energy, onMinus, onPlus, onRemove, onHover, onHoverEnd) {
   const li = el('li', 'deck-card-entry');
   if (BANNED_CARDS.has(name)) li.classList.add('banned');
+  if (onHover) li.addEventListener('mouseenter', onHover);
+  if (onHoverEnd) li.addEventListener('mouseleave', onHoverEnd);
 
   const costEl = el('span', 'deck-card-cost');
   costEl.textContent = energy ?? '—';

@@ -42,8 +42,32 @@ const viewDetailsBtn = document.getElementById('view-details');
 const viewHandBtn = document.getElementById('view-hand');
 const deckGridEl = document.getElementById('deck-grid');
 const handSimEl = document.getElementById('hand-simulator');
+const hoverPreviewEl = document.getElementById('deck-hover-preview');
+const hoverPreviewImg = document.getElementById('deck-hover-preview-img');
+const deckToggleBtn = document.getElementById('deck-toggle');
 
 let activeView = 'card'; // 'card', 'deck', 'details', or 'hand'
+
+// ---- Deck panel collapse/expand ----
+
+function updateToggleContent() {
+  const isNarrow = window.matchMedia('(max-width: 900px)').matches;
+  const collapsed = deckEl.classList.contains('collapsed');
+  if (collapsed) {
+    deckToggleBtn.textContent = isNarrow ? '▲ Decklist' : '◀ Decklist';
+  } else {
+    deckToggleBtn.textContent = isNarrow ? '▼' : '▶';
+  }
+}
+
+deckToggleBtn.addEventListener('click', () => {
+  deckEl.classList.toggle('collapsed');
+  deckToggleBtn.classList.toggle('collapsed');
+  updateToggleContent();
+});
+
+window.addEventListener('resize', updateToggleContent);
+updateToggleContent();
 
 function setActiveView(view) {
   activeView = view;
@@ -164,6 +188,8 @@ function refresh() {
     onAutoRunes: autoFillRunes,
     onRandomLegend: randomLegend,
     onSampleDeck: loadSampleDeck,
+    onHover: showDeckHoverPreview,
+    onHoverEnd: hideDeckHoverPreview,
   });
 
   if (activeView === 'deck') {
@@ -200,6 +226,17 @@ previewEl.addEventListener('click', () => {
   previewEl.classList.add('hidden');
   previewImg.src = '';
 });
+
+function showDeckHoverPreview(card) {
+  hoverPreviewImg.src = card.media?.image_url ?? '';
+  hoverPreviewImg.alt = card.name ?? 'Card preview';
+  hoverPreviewEl.classList.remove('hidden');
+}
+
+function hideDeckHoverPreview() {
+  hoverPreviewEl.classList.add('hidden');
+  hoverPreviewImg.src = '';
+}
 
 // ---- Deck operations ----
 

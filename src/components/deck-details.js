@@ -18,19 +18,22 @@ export function renderDeckDetails(container, deckState) {
     return;
   }
 
-  // 1. Cost Distribution
+  // 1. Energy Cost Distribution
   container.appendChild(renderCostDistribution(allCards));
 
-  // 2. Power Cost Distribution (by domain)
+  // 2. Power Cost Distribution
+  container.appendChild(renderPowerDistribution(allCards));
+
+  // 3. Power Differential (by domain)
   container.appendChild(renderPowerCostDistribution(allCards));
 
-  // 3. Might Distribution (units only)
+  // 4. Might Distribution (units only)
   container.appendChild(renderMightDistribution(allCards));
 
-  // 3. Tag Details
+  // 5. Tag Details
   container.appendChild(renderTagDetails(allCards));
 
-  // 4. Keyword Details
+  // 6. Keyword Details
   container.appendChild(renderKeywordDetails(allCards));
 }
 
@@ -48,98 +51,171 @@ function getAllDeckCards(deckState) {
   return result;
 }
 
-// ---- 1. Cost Distribution ----
+// Card type colors for stacked bar charts
+const TYPE_COLORS = {
+  Gear:   '#e67e22',
+  Legend: '#f1c40f',
+  Spell:  '#3498db',
+  Unit:   '#2ecc71',
+};
+
+const EXCLUDED_TYPES = new Set(['Battlefield', 'Rune']);
+
+/** Filter out battlefields and runes (not part of main deck). */
+function mainDeckCards(allCards) {
+  return allCards.filter(({ card }) => !EXCLUDED_TYPES.has(card.classification?.type));
+}
+
+/** Render a color-coded legend row for card types present in the data. */
+function renderTypeLegend(typesUsed) {
+  const legend = el('div', 'bar-chart-legend');
+  for (const type of Object.keys(TYPE_COLORS)) {
+    if (!typesUsed.has(type)) continue;
+    const item = el('span', 'bar-chart-legend-item');
+    const swatch = el('span', 'bar-chart-legend-swatch');
+    swatch.style.backgroundColor = TYPE_COLORS[type];
+    item.appendChild(swatch);
+    const text = document.createTextNode(type);
+    item.appendChild(text);
+    legend.appendChild(item);
+  }
+  return legend;
+}
+
+/**
+ * Build a stacked bar chart from cost/power buckets broken down by type.
+ * @param {Map<number, Map<string, number>>} typeBuckets  value → type → count
+ * @param {number} maxValue  highest bucket value to iterate to
+ */
+function buildStackedBarChart(typeBuckets, maxValue) {
+  // Find max total across all buckets
+  let maxTotal = 1;
+  for (let i = 0; i <= maxValue; i++) {
+    const bucket = typeBuckets.get(i);
+    if (!bucket) continue;
+    let total = 0;
+    for (const c of bucket.values()) total += c;
+    maxTotal = Math.max(maxTotal, total);
+  }
+
+  const chart = el('div', 'bar-chart');
+  for (let i = 0; i <= maxValue; i++) {
+    const bucket = typeBuckets.get(i);
+    let total = 0;
+    if (bucket) for (const c of bucket.values()) total += c;
+
+    const col = el('div', 'bar-col');
+
+    const countLabel = el('span', 'bar-count');
+    countLabel.textContent = total || '';
+    col.appendChild(countLabel);
+
+    const stack = el('div', 'bar-stack');
+    const stackPct = maxTotal > 0 ? (total / maxTotal) * 100 : 0;
+    stack.style.height = `${stackPct}%`;
+
+    if (bucket && total > 0) {
+      // Render segments bottom-to-top in consistent type order
+      for (const type of Object.keys(TYPE_COLORS)) {
+        const count = bucket.get(type);
+        if (!count) continue;
+        const seg = el('div', 'bar-segment');
+        seg.style.flex = `${count} 0 0`;
+        seg.style.backgroundColor = TYPE_COLORS[type];
+        seg.title = `${type}: ${count}`;
+        stack.appendChild(seg);
+      }
+    }
+    col.appendChild(stack);
+
+    const label = el('span', 'bar-label');
+    label.textContent = i;
+    col.appendChild(label);
+
+    chart.appendChild(col);
+  }
+  return chart;
+}
+
+// ---- 1. Energy Cost Distribution ----
 
 function renderCostDistribution(allCards) {
   const section = el('div', 'details-section');
 
   const header = el('h3', 'details-section-title');
-  header.textContent = 'Cost Distribution';
+  header.textContent = 'Energy Cost Distribution';
   section.appendChild(header);
 
-  // Gather all classification types present in the deck
-  const typesInDeck = new Set();
-  for (const { card } of allCards) {
-    const type = card.classification?.type;
-    if (type) typesInDeck.add(type);
-  }
-  const typeList = ['All', ...Array.from(typesInDeck).sort()];
+  const cards = mainDeckCards(allCards);
 
-  // Filter buttons
-  let activeType = 'All';
-  const filterRow = el('div', 'details-filter-row');
-  const chartContainer = el('div', 'details-chart-container');
-
-  function renderChart() {
-    chartContainer.innerHTML = '';
-
-    const filtered = activeType === 'All'
-      ? allCards
-      : allCards.filter(({ card }) => card.classification?.type === activeType);
-
-    // Build cost buckets
-    const buckets = new Map();
-    let maxCost = 0;
-    for (const { card, count } of filtered) {
-      const cost = card.attributes?.energy;
-      if (cost == null) continue;
-      maxCost = Math.max(maxCost, cost);
-      buckets.set(cost, (buckets.get(cost) ?? 0) + count);
-    }
-
-    if (buckets.size === 0) {
-      const empty = el('div', 'details-chart-empty');
-      empty.textContent = 'No cards with energy cost.';
-      chartContainer.appendChild(empty);
-      return;
-    }
-
-    const maxCount = Math.max(...buckets.values(), 1);
-
-    const chart = el('div', 'bar-chart');
-    for (let i = 0; i <= maxCost; i++) {
-      const count = buckets.get(i) ?? 0;
-      const col = el('div', 'bar-col');
-
-      const countLabel = el('span', 'bar-count');
-      countLabel.textContent = count || '';
-      col.appendChild(countLabel);
-
-      const bar = el('div', 'bar');
-      const pct = maxCount > 0 ? (count / maxCount) * 100 : 0;
-      bar.style.height = `${pct}%`;
-      col.appendChild(bar);
-
-      const label = el('span', 'bar-label');
-      label.textContent = i;
-      col.appendChild(label);
-
-      chart.appendChild(col);
-    }
-    chartContainer.appendChild(chart);
+  // Build cost → type → count buckets
+  const typeBuckets = new Map();
+  const typesUsed = new Set();
+  let maxCost = 0;
+  for (const { card, count } of cards) {
+    const cost = card.attributes?.energy;
+    if (cost == null) continue;
+    const type = card.classification?.type ?? 'Other';
+    maxCost = Math.max(maxCost, cost);
+    if (!typeBuckets.has(cost)) typeBuckets.set(cost, new Map());
+    const bucket = typeBuckets.get(cost);
+    bucket.set(type, (bucket.get(type) ?? 0) + count);
+    typesUsed.add(type);
   }
 
-  for (const type of typeList) {
-    const btn = el('button', `details-filter-btn${type === activeType ? ' active' : ''}`);
-    btn.textContent = type;
-    btn.addEventListener('click', () => {
-      activeType = type;
-      // Update active class
-      filterRow.querySelectorAll('.details-filter-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      renderChart();
-    });
-    filterRow.appendChild(btn);
+  if (typeBuckets.size === 0) {
+    const empty = el('div', 'details-chart-empty');
+    empty.textContent = 'No cards with energy cost.';
+    section.appendChild(empty);
+    return section;
   }
 
-  section.appendChild(filterRow);
-  renderChart();
-  section.appendChild(chartContainer);
+  section.appendChild(renderTypeLegend(typesUsed));
+  section.appendChild(buildStackedBarChart(typeBuckets, maxCost));
 
   return section;
 }
 
 // ---- 2. Power Cost Distribution ----
+
+function renderPowerDistribution(allCards) {
+  const section = el('div', 'details-section');
+
+  const header = el('h3', 'details-section-title');
+  header.textContent = 'Power Cost Distribution';
+  section.appendChild(header);
+
+  const cards = mainDeckCards(allCards);
+
+  // Build power → type → count buckets
+  const typeBuckets = new Map();
+  const typesUsed = new Set();
+  let maxPower = 0;
+  for (const { card, count } of cards) {
+    const power = card.attributes?.power;
+    if (power == null) continue;
+    const type = card.classification?.type ?? 'Other';
+    maxPower = Math.max(maxPower, power);
+    if (!typeBuckets.has(power)) typeBuckets.set(power, new Map());
+    const bucket = typeBuckets.get(power);
+    bucket.set(type, (bucket.get(type) ?? 0) + count);
+    typesUsed.add(type);
+  }
+
+  if (typeBuckets.size === 0) {
+    const empty = el('div', 'details-chart-empty');
+    empty.textContent = 'No cards with power cost.';
+    section.appendChild(empty);
+    return section;
+  }
+
+  section.appendChild(renderTypeLegend(typesUsed));
+  section.appendChild(buildStackedBarChart(typeBuckets, maxPower));
+
+  return section;
+}
+
+// ---- 3. Power Differential ----
 
 const DOMAIN_COLORS = {
   Fury: '#e74c3c',
@@ -193,7 +269,7 @@ function renderPowerCostDistribution(allCards) {
   const section = el('div', 'details-section');
 
   const header = el('h3', 'details-section-title');
-  header.textContent = 'Power Cost';
+  header.textContent = 'Power Differential';
   section.appendChild(header);
 
   // Build domain → count map for cards with power cost
