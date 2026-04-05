@@ -156,7 +156,7 @@ export function renderHandSimulator(container, deckState, showPreview) {
         }
 
         const img = document.createElement('img');
-        img.src = card.media?.image_url ?? '';
+        img.src = card.media?.local_image ?? card.media?.image_url ?? '';
         img.alt = card.name ?? 'Card';
         img.loading = 'lazy';
         cell.appendChild(img);

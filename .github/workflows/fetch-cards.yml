@@ -20,13 +20,14 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Fetch card data from Riftcodex API
+      - name: Fetch card data and images from Riftcodex API
         run: node scripts/fetch-cards.mjs
 
       - name: Check for changes
         id: changes
         run: |
-          git diff --quiet public/data/ && echo "changed=false" >> $GITHUB_OUTPUT || echo "changed=true" >> $GITHUB_OUTPUT
+          git add public/data/
+          git diff --cached --quiet && echo "changed=false" >> $GITHUB_OUTPUT || echo "changed=true" >> $GITHUB_OUTPUT
 
       - name: Commit and push
         if: steps.changes.outputs.changed == 'true'

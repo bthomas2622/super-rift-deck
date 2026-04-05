@@ -32,7 +32,7 @@ export function renderCardGrid(container, cards, deckState, onAdd, onPreview, { 
     const img = document.createElement('img');
     img.alt = card.name ?? 'Card';
     img.loading = 'lazy';
-    img.src = card.media?.image_url ?? '';
+    img.src = card.media?.local_image ?? card.media?.image_url ?? '';
     cell.appendChild(img);
 
     // Count badge

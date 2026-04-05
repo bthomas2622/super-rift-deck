@@ -231,7 +231,7 @@ function renderDeckGrid() {
 // ---- Card preview ----
 
 function showPreview(card) {
-  previewImg.src = card.media?.image_url ?? '';
+  previewImg.src = card.media?.local_image ?? card.media?.image_url ?? '';
   previewImg.alt = card.name ?? 'Card preview';
   previewEl.classList.remove('hidden');
 }
@@ -242,7 +242,7 @@ previewEl.addEventListener('click', () => {
 });
 
 function showDeckHoverPreview(card) {
-  hoverPreviewImg.src = card.media?.image_url ?? '';
+  hoverPreviewImg.src = card.media?.local_image ?? card.media?.image_url ?? '';
   hoverPreviewImg.alt = card.name ?? 'Card preview';
   hoverPreviewEl.classList.remove('hidden');
 }
@@ -392,6 +392,7 @@ function exportDeck() {
       return exportDeckAs(deckState, formatId, fileTypeId);
     },
     onImport() {},
+    deckState,
   });
 }
 

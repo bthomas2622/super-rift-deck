@@ -1,15 +1,36 @@
 [
   {
-    "id": "69bc5bf6e195be3e561d1eb3",
-    "name": "Riftbound Organized Play Promotional Cards",
-    "set_id": "OPP",
-    "card_count": 107,
+    "id": "69bc5bf6e195be3e561d1eb0",
+    "name": "Riftbound Judge Promotional Cards",
+    "set_id": "JDG",
+    "card_count": 1,
+    "tcgplayer_id": "24552",
+    "cardmarket_id": [
+      "6322",
+      "6483"
+    ],
+    "published_on": "2025-12-01T00:00:00"
+  },
+  {
+    "id": "69bc5bf6e195be3e561d1eb4",
+    "name": "Riftbound Promotional Cards",
+    "set_id": "PR",
+    "card_count": 12,
     "tcgplayer_id": "24343",
     "cardmarket_id": [
       "6322",
       "6483"
     ],
     "published_on": "2025-10-31T00:00:00"
+  },
+  {
+    "id": "69bc5bf6e195be3e561d1eaf",
+    "name": "Spiritforged",
+    "set_id": "SFD",
+    "card_count": 288,
+    "tcgplayer_id": "24519",
+    "cardmarket_id": "6399",
+    "published_on": "2026-02-13T00:00:00"
   },
   {
     "id": "69bc5bf6e195be3e561d1eae",
@@ -30,45 +51,24 @@
     "published_on": "2025-10-31T00:00:00"
   },
   {
-    "id": "69bc5bf6e195be3e561d1eaf",
-    "name": "Spiritforged",
-    "set_id": "SFD",
-    "card_count": 288,
-    "tcgplayer_id": "24519",
-    "cardmarket_id": "6399",
-    "published_on": "2026-02-13T00:00:00"
-  },
-  {
-    "id": "69bc5bf6e195be3e561d1eb4",
-    "name": "Riftbound Promotional Cards",
-    "set_id": "PR",
-    "card_count": 12,
-    "tcgplayer_id": "24343",
-    "cardmarket_id": [
-      "6322",
-      "6483"
-    ],
-    "published_on": "2025-10-31T00:00:00"
-  },
-  {
-    "id": "69bc5bf6e195be3e561d1eb0",
-    "name": "Riftbound Judge Promotional Cards",
-    "set_id": "JDG",
-    "card_count": 1,
-    "tcgplayer_id": "24552",
-    "cardmarket_id": [
-      "6322",
-      "6483"
-    ],
-    "published_on": "2025-12-01T00:00:00"
-  },
-  {
     "id": "69bc5bf6e195be3e561d1eb2",
     "name": "Origins: Proving Grounds",
     "set_id": "OGS",
     "card_count": 24,
     "tcgplayer_id": "24439",
     "cardmarket_id": "6289",
+    "published_on": "2025-10-31T00:00:00"
+  },
+  {
+    "id": "69bc5bf6e195be3e561d1eb3",
+    "name": "Riftbound Organized Play Promotional Cards",
+    "set_id": "OPP",
+    "card_count": 107,
+    "tcgplayer_id": "24343",
+    "cardmarket_id": [
+      "6322",
+      "6483"
+    ],
     "published_on": "2025-10-31T00:00:00"
   }
 ]

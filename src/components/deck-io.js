@@ -9,6 +9,8 @@
  *   - Rift Atlas (txt): sectioned with headers "Legend:", "Champion:", etc. (same as PiltoverArchive)
  */
 
+import { exportDeckImage } from './deck-image.js';
+
 // ---- Helpers ----
 
 /** Build a short ID like "OGN-030" from a card's set_id + collector_number. */
@@ -316,6 +318,12 @@ function addToSection(result, section, card, count) {
 
 export const FORMATS = [
   {
+    id: 'deckimage',
+    label: 'Deck Image',
+    fileTypes: [{ id: 'image', label: 'Image (.png)', exportOnly: true }],
+    exportOnly: true,
+  },
+  {
     id: 'superriftdeck',
     label: 'Super Rift Deck',
     fileTypes: [{ id: 'txt', label: 'Text (.txt)' }],
@@ -370,7 +378,7 @@ export function importDeckFrom(text, formatId, fileTypeId, allCards) {
 
 // ---- Modal UI ----
 
-export function showIOModal(mode, { onExport, onImport }) {
+export function showIOModal(mode, { onExport, onImport, deckState }) {
   const overlay = document.createElement('div');
   overlay.className = 'io-modal-overlay';
 
@@ -393,7 +401,10 @@ export function showIOModal(mode, { onExport, onImport }) {
   defaultOpt.value = '';
   defaultOpt.textContent = '— Select format —';
   formatSelect.appendChild(defaultOpt);
-  for (const fmt of FORMATS) {
+  const availableFormats = mode === 'import'
+    ? FORMATS.filter(f => !f.exportOnly)
+    : FORMATS;
+  for (const fmt of availableFormats) {
     const o = document.createElement('option');
     o.value = fmt.id;
     o.textContent = fmt.label;
@@ -420,6 +431,35 @@ export function showIOModal(mode, { onExport, onImport }) {
   textarea.readOnly = mode === 'export';
   textarea.style.display = 'none';
   modal.appendChild(textarea);
+
+  // Image export: name/author form (hidden by default)
+  const imageForm = document.createElement('div');
+  imageForm.className = 'io-image-form';
+  imageForm.style.display = 'none';
+
+  const nameLabel = document.createElement('label');
+  nameLabel.className = 'io-label';
+  nameLabel.textContent = 'Deck Name';
+  imageForm.appendChild(nameLabel);
+
+  const nameInput = document.createElement('input');
+  nameInput.className = 'io-input';
+  nameInput.type = 'text';
+  nameInput.placeholder = 'Enter deck name...';
+  imageForm.appendChild(nameInput);
+
+  const authorLabel = document.createElement('label');
+  authorLabel.className = 'io-label';
+  authorLabel.textContent = 'Author';
+  imageForm.appendChild(authorLabel);
+
+  const authorInput = document.createElement('input');
+  authorInput.className = 'io-input';
+  authorInput.type = 'text';
+  authorInput.placeholder = 'Enter author name...';
+  imageForm.appendChild(authorInput);
+
+  modal.appendChild(imageForm);
 
   // Action buttons
   const btnRow = document.createElement('div');
@@ -462,6 +502,17 @@ export function showIOModal(mode, { onExport, onImport }) {
     downloadBtn.addEventListener('click', () => {
       const formatId = formatSelect.value;
       const fileTypeId = getSelectedFileType();
+
+      if (fileTypeId === 'image') {
+        // Image export
+        downloadBtn.textContent = 'Generating...';
+        downloadBtn.disabled = true;
+        exportDeckImage(deckState, nameInput.value.trim(), authorInput.value.trim())
+          .then(() => { close(); })
+          .catch(() => { downloadBtn.textContent = 'Download'; downloadBtn.disabled = false; });
+        return;
+      }
+
       const fmt = FORMATS.find(f => f.id === formatId);
       const ext = fileTypeId === 'json' ? 'json' : 'txt';
       const blob = new Blob([textarea.value], { type: 'text/plain' });
@@ -507,14 +558,22 @@ export function showIOModal(mode, { onExport, onImport }) {
 
     if (fmt.fileTypes.length > 1) {
       ftSelect.innerHTML = '';
-      for (const ft of fmt.fileTypes) {
+      const availableTypes = mode === 'import'
+        ? fmt.fileTypes.filter(ft => !ft.exportOnly)
+        : fmt.fileTypes;
+      for (const ft of availableTypes) {
         const o = document.createElement('option');
         o.value = ft.id;
         o.textContent = ft.label;
         ftSelect.appendChild(o);
       }
-      ftLabel.style.display = '';
-      ftSelect.style.display = '';
+      if (availableTypes.length > 1) {
+        ftLabel.style.display = '';
+        ftSelect.style.display = '';
+      } else {
+        ftLabel.style.display = 'none';
+        ftSelect.style.display = 'none';
+      }
     } else {
       ftLabel.style.display = 'none';
       ftSelect.style.display = 'none';
@@ -528,11 +587,15 @@ export function showIOModal(mode, { onExport, onImport }) {
     const fileTypeId = getSelectedFileType();
     if (!formatId) return;
 
-    textarea.style.display = '';
-    actionBtn.style.display = '';
+    const isImage = fileTypeId === 'image';
+
+    // Toggle between image form and textarea
+    imageForm.style.display = isImage ? '' : 'none';
+    textarea.style.display = isImage ? 'none' : '';
+    actionBtn.style.display = isImage ? 'none' : '';
     if (downloadBtn) downloadBtn.style.display = '';
 
-    if (mode === 'export') {
+    if (mode === 'export' && !isImage) {
       const text = onExport(formatId, fileTypeId);
       textarea.value = text ?? '(empty deck)';
     }

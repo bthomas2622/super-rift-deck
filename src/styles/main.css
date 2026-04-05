@@ -1431,6 +1431,30 @@ body {
   box-shadow: 0 0 6px rgba(200, 170, 110, 0.2);
 }
 
+.io-input {
+  width: 100%;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  padding: 8px 10px;
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.io-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 6px rgba(200, 170, 110, 0.2);
+}
+
+.io-image-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .io-btn-row {
   display: flex;
   gap: 8px;

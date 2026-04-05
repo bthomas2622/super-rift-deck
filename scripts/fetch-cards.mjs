@@ -7,15 +7,18 @@
  * Usage: node scripts/fetch-cards.mjs
  */
 
-import { writeFileSync, mkdirSync } from 'fs';
+import { writeFileSync, mkdirSync, existsSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = resolve(__dirname, '..', 'public', 'data');
+const IMAGES_DIR = resolve(DATA_DIR, 'images');
 const API_BASE = 'https://api.riftcodex.com';
 const PAGE_SIZE = 100;
 const REQUEST_DELAY_MS = 200;
+const IMAGE_WIDTH = 300;
+const IMAGE_CONCURRENCY = 10;
 
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
@@ -119,6 +122,73 @@ async function fetchIndexes() {
   return indexes;
 }
 
+/**
+ * Build a short ID for local image filename: "OGN-030"
+ */
+function shortId(card) {
+  const setId = card.set?.set_id ?? 'UNK';
+  const col = String(card.collector_number ?? 0).padStart(3, '0');
+  return `${setId}-${col}`;
+}
+
+/**
+ * Download card images as resized WebP files.
+ * Uses card.id as filename for uniqueness.
+ * Skips images that already exist locally.
+ */
+async function fetchImages(cards) {
+  mkdirSync(IMAGES_DIR, { recursive: true });
+
+  // Deduplicate by image URL — multiple cards can share the same image
+  const seen = new Map(); // url → local filename
+  const toDownload = [];
+
+  for (const card of cards) {
+    const url = card.media?.image_url;
+    if (!url) continue;
+
+    if (seen.has(url)) continue;
+
+    const id = card.id;
+    const filePath = resolve(IMAGES_DIR, `${id}.webp`);
+    seen.set(url, id);
+
+    if (existsSync(filePath)) continue;
+    toDownload.push({ id, url, filePath });
+  }
+
+  console.log(`Downloading ${toDownload.length} new images (${seen.size} total unique, skipping existing)...`);
+
+  // Download in batches for concurrency control
+  for (let i = 0; i < toDownload.length; i += IMAGE_CONCURRENCY) {
+    const batch = toDownload.slice(i, i + IMAGE_CONCURRENCY);
+    await Promise.all(batch.map(async ({ id, url, filePath }) => {
+      try {
+        const imgUrl = `${url}?w=${IMAGE_WIDTH}&fm=webp`;
+        const res = await fetch(imgUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (compatible; RiftBuilder/1.0; +https://github.com/bthomas2622/super-rift-deck)',
+          },
+        });
+        if (!res.ok) {
+          console.warn(`  ✗ ${id}: HTTP ${res.status}`);
+          return;
+        }
+        const buf = Buffer.from(await res.arrayBuffer());
+        writeFileSync(filePath, buf);
+      } catch (err) {
+        console.warn(`  ✗ ${id}: ${err.message}`);
+      }
+    }));
+    const done = Math.min(i + IMAGE_CONCURRENCY, toDownload.length);
+    if (done % 50 === 0 || done === toDownload.length) {
+      console.log(`  ${done}/${toDownload.length} images downloaded`);
+    }
+  }
+
+  console.log('Image download complete.');
+}
+
 async function main() {
   mkdirSync(DATA_DIR, { recursive: true });
 
@@ -128,6 +198,22 @@ async function main() {
       fetchSets(),
       fetchIndexes(),
     ]);
+
+    // Add local_image path to each card (using card.id for uniqueness)
+    // Cards sharing the same image URL reuse the first card's file
+    const urlToFile = new Map();
+    for (const card of cards) {
+      if (card.media?.image_url) {
+        const url = card.media.image_url;
+        if (!urlToFile.has(url)) {
+          urlToFile.set(url, `data/images/${card.id}.webp`);
+        }
+        card.media.local_image = urlToFile.get(url);
+      }
+    }
+
+    // Download images
+    await fetchImages(cards);
 
     writeFileSync(resolve(DATA_DIR, 'cards.json'), JSON.stringify(cards, null, 2));
     console.log(`Wrote ${DATA_DIR}/cards.json`);
