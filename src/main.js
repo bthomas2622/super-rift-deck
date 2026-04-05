@@ -45,6 +45,20 @@ const handSimEl = document.getElementById('hand-simulator');
 const hoverPreviewEl = document.getElementById('deck-hover-preview');
 const hoverPreviewImg = document.getElementById('deck-hover-preview-img');
 const deckToggleBtn = document.getElementById('deck-toggle');
+const contributeBtn = document.getElementById('contribute-btn');
+const contributePopup = document.getElementById('contribute-popup');
+
+// ---- Contribute popup ----
+contributeBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  contributePopup.classList.toggle('hidden');
+});
+
+document.addEventListener('click', (e) => {
+  if (!contributePopup.classList.contains('hidden') && !contributePopup.contains(e.target) && e.target !== contributeBtn) {
+    contributePopup.classList.add('hidden');
+  }
+});
 
 let activeView = 'card'; // 'card', 'deck', 'details', or 'hand'
 

@@ -97,6 +97,7 @@ super-rift-deck/
 │   └── styles/
 │       └── main.css             # Styles
 ├── CONTRIBUTING.md
+├── LICENSE
 ├── vite.config.js
 └── package.json
 ```
@@ -131,7 +132,7 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines
 
 ## License
 
-ISC
+[MIT](LICENSE)
 
 ## Legal
 

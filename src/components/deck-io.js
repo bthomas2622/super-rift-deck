@@ -6,6 +6,7 @@
  *   - Riftbound.gg (txt): same flat list "count Name (SET-NUM)"
  *   - Riftbound.gg (json): { metadata, deck: { "Main Board": [...], "Side Board": [...] } }
  *   - PiltoverArchive (txt): sectioned with headers "Legend:", "Champion:", etc.
+ *   - Rift Atlas (txt): sectioned with headers "Legend:", "Champion:", etc. (same as PiltoverArchive)
  */
 
 // ---- Helpers ----
@@ -332,6 +333,11 @@ export const FORMATS = [
     label: 'PiltoverArchive',
     fileTypes: [{ id: 'txt', label: 'Text (.txt)' }],
   },
+  {
+    id: 'riftatlas',
+    label: 'Rift Atlas',
+    fileTypes: [{ id: 'txt', label: 'Text (.txt)' }],
+  },
 ];
 
 const exporters = {
@@ -339,6 +345,7 @@ const exporters = {
   'riftboundgg:txt': exportRiftboundTxt,
   'riftboundgg:json': exportRiftboundJson,
   'piltoverarchive:txt': exportPiltoverArchive,
+  'riftatlas:txt': exportPiltoverArchive,
 };
 
 const importers = {
@@ -346,6 +353,7 @@ const importers = {
   'riftboundgg:txt': importRiftboundTxt,
   'riftboundgg:json': importRiftboundJson,
   'piltoverarchive:txt': importPiltoverArchive,
+  'riftatlas:txt': importPiltoverArchive,
 };
 
 export function exportDeckAs(deckState, formatId, fileTypeId) {
