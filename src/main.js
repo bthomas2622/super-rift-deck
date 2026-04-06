@@ -26,6 +26,7 @@ const deckState = {
   runes: new Map(),
   battlefields: new Map(),
   sideboard: new Map(),
+  addToSideboard: false,
 };
 
 // ---- DOM refs ----
@@ -204,6 +205,10 @@ function refresh() {
     onSampleDeck: loadSampleDeck,
     onHover: showDeckHoverPreview,
     onHoverEnd: hideDeckHoverPreview,
+    onToggleSideboard: () => {
+      deckState.addToSideboard = !deckState.addToSideboard;
+      refresh();
+    },
   });
 
   if (activeView === 'deck') {
@@ -291,6 +296,14 @@ function addCardToDeck(card) {
     return;
   }
 
+  // Sideboard mode — non-typed cards go to sideboard when toggle is active
+  if (deckState.addToSideboard) {
+    addToMap(deckState.sideboard, card, 3);
+    saveDeckToStorage();
+    refresh();
+    return;
+  }
+
   // Main deck card (units, gear, spells, champion units beyond first)
   addToMap(deckState.mainDeck, card, 3);
   saveDeckToStorage();
@@ -341,6 +354,7 @@ function clearDeck() {
   deckState.runes.clear();
   deckState.battlefields.clear();
   deckState.sideboard.clear();
+  deckState.addToSideboard = false;
   saveDeckToStorage();
   refresh();
 }

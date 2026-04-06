@@ -2,8 +2,8 @@
  * Deck import/export — supports multiple third-party formats.
  *
  * Formats:
- *   - Super Rift Deck (txt): flat list "count Name (SET-NUM)"
- *   - Riftbound.gg (txt): same flat list "count Name (SET-NUM)"
+ *   - Super Rift Deck (txt): sectioned with headers "Legend:", "Champion:", etc. (same as PiltoverArchive)
+ *   - Riftbound.gg (txt): flat list "count Name (SET-NUM)"
  *   - Riftbound.gg (json): { metadata, deck: { "Main Board": [...], "Side Board": [...] } }
  *   - PiltoverArchive (txt): sectioned with headers "Legend:", "Champion:", etc.
  *   - Rift Atlas (txt): sectioned with headers "Legend:", "Champion:", etc. (same as PiltoverArchive)
@@ -412,7 +412,7 @@ export const FORMATS = [
 ];
 
 const exporters = {
-  'superriftdeck:txt': exportSuperRiftDeck,
+  'superriftdeck:txt': exportPiltoverArchive,
   'riftboundgg:txt': exportRiftboundTxt,
   'riftboundgg:json': exportRiftboundJson,
   'piltoverarchive:txt': exportPiltoverArchive,
@@ -421,7 +421,7 @@ const exporters = {
 };
 
 const importers = {
-  'superriftdeck:txt': importSuperRiftDeck,
+  'superriftdeck:txt': importPiltoverArchive,
   'riftboundgg:txt': importRiftboundTxt,
   'riftboundgg:json': importRiftboundJson,
   'piltoverarchive:txt': importPiltoverArchive,

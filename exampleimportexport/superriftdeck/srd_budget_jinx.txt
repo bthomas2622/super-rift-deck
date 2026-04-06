@@ -1,21 +1,34 @@
-1 Jinx - Loose Cannon (OGN-251)
-1 Jinx - Demolitionist (OGN-030)
-1 Zaun Warrens (OGN-298)
-1 The Candlelit Sanctum (OGN-291)
-1 The Arena's Greatest (OGN-290)
-3 Teemo - Scout (OGN-197)
-3 Traveling Merchant (OGN-185)
-3 Ride the Wind (OGN-173)
-3 Fight or Flight (OGN-168)
-4 Chaos Rune (OGN-166)
-3 Vi - Destructive (OGN-036)
-1 Falling Star (OGN-029)
-2 Draven - Showboat (OGN-028)
-3 Sun Disc (OGN-021)
-3 Pouty Poro (OGN-013)
-3 Noxus Hopeful (OGN-012)
-3 Hextech Ray (OGN-009)
-8 Fury Rune (OGN-007)
-3 Flame Chompers (OGN-006)
-3 Cleave (OGN-004)
-3 Chemtech Enforcer (OGN-003)
+Legend:
+1 Jinx, Loose Cannon
+
+Champion:
+1 Jinx, Demolitionist
+
+MainDeck:
+3 Chemtech Enforcer
+3 Cleave
+3 Flame Chompers
+3 Hextech Ray
+3 Noxus Hopeful
+3 Pouty Poro
+3 Ride the Wind
+3 Stacked Deck
+3 Sun Disc
+3 Traveling Merchant
+2 Draven, Showboat
+3 Vi, Destructive
+3 Teemo, Scout
+1 Falling Star
+3 Fight or Flight
+
+Battlefields:
+1 The Arena's Greatest
+1 The Candlelit Sanctum
+1 Zaun Warrens
+
+Runes:
+8 Fury Rune
+4 Chaos Rune
+
+Sideboard:
+3 Rebuke

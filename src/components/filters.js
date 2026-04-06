@@ -39,7 +39,7 @@ export function createFilterState() {
     supertypes: new Set(),
     sets: new Set(),
     rarities: new Set(),
-    energy: null, // null = any
+    energy: new Set(),
     sort: 'collector',
     sortDir: 'asc',
     tab: 'All',
@@ -111,10 +111,14 @@ export function renderFilters(container, filterState, indexes, sets, onChange, o
   const energyToggles = el('div', 'energy-toggles');
   for (const val of ENERGY_VALUES) {
     const label = val === 8 ? '8+' : String(val);
-    const btn = el('button', `energy-btn${filterState.energy === val ? ' active' : ''}`);
+    const btn = el('button', `energy-btn${filterState.energy.has(val) ? ' active' : ''}`);
     btn.textContent = label;
     btn.addEventListener('click', () => {
-      filterState.energy = filterState.energy === val ? null : val;
+      if (filterState.energy.has(val)) {
+        filterState.energy.delete(val);
+      } else {
+        filterState.energy.add(val);
+      }
       onChangeHard();
     });
     energyToggles.appendChild(btn);
@@ -200,6 +204,21 @@ export function renderFilters(container, filterState, indexes, sets, onChange, o
   bannedLabel.appendChild(bannedText);
   row5.appendChild(bannedLabel);
 
+  const resetBtn = el('button', 'filter-reset-btn');
+  resetBtn.textContent = 'Reset Filters';
+  resetBtn.addEventListener('click', () => {
+    const defaults = createFilterState();
+    Object.assign(filterState, defaults);
+    filterState.domains = defaults.domains;
+    filterState.energy = defaults.energy;
+    filterState.types = defaults.types;
+    filterState.supertypes = defaults.supertypes;
+    filterState.sets = defaults.sets;
+    filterState.rarities = defaults.rarities;
+    onChangeHard();
+  });
+  row5.appendChild(resetBtn);
+
   container.appendChild(row5);
 }
 
@@ -272,13 +291,12 @@ export function applyFilters(cards, filterState, sets) {
     }
 
     // Energy cost filter
-    if (filterState.energy !== null) {
+    if (filterState.energy.size > 0) {
       const cost = card.attributes?.energy;
-      if (filterState.energy === 8) {
-        if (cost == null || cost < 8) return false;
-      } else {
-        if (cost !== filterState.energy) return false;
-      }
+      const match = filterState.energy.has(8)
+        ? (cost != null && cost >= 8) || filterState.energy.has(cost)
+        : filterState.energy.has(cost);
+      if (!match) return false;
     }
 
     return true;

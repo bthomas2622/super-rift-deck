@@ -15,7 +15,7 @@ const SECTIONS = [
   { key: 'sideboard', title: 'Sideboard', target: 8, optional: true },
 ];
 
-export function renderDeckPanel(container, deckState, { onRemove, onChangeQty, onClear, onExport, onImport, onAutoRunes, onRandomLegend, onSampleDeck, onHover, onHoverEnd }) {
+export function renderDeckPanel(container, deckState, { onRemove, onChangeQty, onClear, onExport, onImport, onAutoRunes, onRandomLegend, onSampleDeck, onHover, onHoverEnd, onToggleSideboard }) {
   container.innerHTML = '';
 
   // Header
@@ -85,6 +85,25 @@ export function renderDeckPanel(container, deckState, { onRemove, onChangeQty, o
       randBtn.title = 'Pick a random Legend';
       randBtn.addEventListener('click', onRandomLegend);
       secHeader.appendChild(randBtn);
+    }
+
+    if (sec.key === 'sideboard' && onToggleSideboard) {
+      const sideboardFull = getSectionCount(deckState, 'sideboard') >= 8;
+      if (sideboardFull && deckState.addToSideboard) {
+        deckState.addToSideboard = false;
+      }
+      const addToBtn = el('button', `deck-add-to-btn${deckState.addToSideboard ? ' active' : ''}`);
+      addToBtn.textContent = 'Add To';
+      if (sideboardFull) {
+        addToBtn.disabled = true;
+        addToBtn.title = 'Sideboard is full (8/8)';
+      } else {
+        addToBtn.title = deckState.addToSideboard
+          ? 'Cards are being added to Sideboard — click to switch back to Main Deck'
+          : 'Click to add cards to Sideboard instead of Main Deck';
+        addToBtn.addEventListener('click', onToggleSideboard);
+      }
+      secHeader.appendChild(addToBtn);
     }
 
     const count = el('span', 'deck-section-count');
