@@ -7,6 +7,7 @@
  *   - Riftbound.gg (json): { metadata, deck: { "Main Board": [...], "Side Board": [...] } }
  *   - PiltoverArchive (txt): sectioned with headers "Legend:", "Champion:", etc.
  *   - Rift Atlas (txt): sectioned with headers "Legend:", "Champion:", etc. (same as PiltoverArchive)
+ *   - CardNexus (txt): flat list "count Name (SET) #NUM"
  */
 
 import { exportDeckImage } from './deck-image.js';
@@ -135,6 +136,26 @@ function exportPiltoverArchive(deckState) {
   if (sbLines.length) sections.push(`Sideboard:\n${sbLines.join('\n')}`);
 
   return sections.join('\n\n');
+}
+
+function exportCardNexus(deckState) {
+  const lines = [];
+  for (const { card, count, section } of iterateDeck(deckState)) {
+    if (section === 'sideboard') continue;
+    const setId = card.set?.set_id ?? '';
+    const col = String(card.collector_number ?? 0).padStart(3, '0');
+    lines.push(`${count} ${card.name} (${setId}) #${col}`);
+  }
+  if (deckState.sideboard.size > 0) {
+    lines.push('');
+    lines.push('// Sideboard');
+    for (const [, entry] of deckState.sideboard) {
+      const setId = entry.card.set?.set_id ?? '';
+      const col = String(entry.card.collector_number ?? 0).padStart(3, '0');
+      lines.push(`${entry.count} ${entry.card.name} (${setId}) #${col}`);
+    }
+  }
+  return lines.join('\n');
 }
 
 /** PiltoverArchive uses comma instead of dash for subtitles: "Jinx, Loose Cannon" */
@@ -277,6 +298,43 @@ function importPiltoverArchive(text, allCards) {
   return result;
 }
 
+function importCardNexus(text, allCards) {
+  const { byName, byShortId } = buildLookups(allCards);
+  const result = emptyDeckResult();
+  let inSideboard = false;
+
+  for (const rawLine of text.split('\n')) {
+    const line = rawLine.trim();
+    if (!line) continue;
+
+    if (/^\/\/\s*sideboard/i.test(line)) {
+      inSideboard = true;
+      continue;
+    }
+
+    // Match: count Name (SET) #NUM
+    const m = line.match(/^(\d+)\s+(.+?)\s+\(([A-Za-z]+)\)\s+#(\d+)$/);
+    if (!m) continue;
+
+    const count = parseInt(m[1], 10);
+    const name = m[2].trim();
+    const setId = m[3].toUpperCase();
+    const col = m[4].padStart(3, '0');
+    const id = `${setId}-${col}`;
+
+    const card = byShortId.get(id) || byName.get(name);
+    if (!card) continue;
+
+    if (inSideboard) {
+      addToSection(result, 'sideboard', card, count);
+    } else {
+      placeCard(result, card, count);
+    }
+  }
+
+  return result;
+}
+
 function emptyDeckResult() {
   return {
     legend: null,
@@ -346,6 +404,11 @@ export const FORMATS = [
     label: 'Rift Atlas',
     fileTypes: [{ id: 'txt', label: 'Text (.txt)' }],
   },
+  {
+    id: 'cardnexus',
+    label: 'CardNexus',
+    fileTypes: [{ id: 'txt', label: 'Text (.txt)' }],
+  },
 ];
 
 const exporters = {
@@ -354,6 +417,7 @@ const exporters = {
   'riftboundgg:json': exportRiftboundJson,
   'piltoverarchive:txt': exportPiltoverArchive,
   'riftatlas:txt': exportPiltoverArchive,
+  'cardnexus:txt': exportCardNexus,
 };
 
 const importers = {
@@ -362,6 +426,7 @@ const importers = {
   'riftboundgg:json': importRiftboundJson,
   'piltoverarchive:txt': importPiltoverArchive,
   'riftatlas:txt': importPiltoverArchive,
+  'cardnexus:txt': importCardNexus,
 };
 
 export function exportDeckAs(deckState, formatId, fileTypeId) {
