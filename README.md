@@ -71,11 +71,11 @@ super-rift-deck/
 │   └── workflows/
 │       ├── deploy.yml           # Build & deploy to GitHub Pages
 │       ├── fetch-cards.yml      # Nightly card data fetch (cron + manual)
-│       └── update-banned.yml    # Update banned card list
 ├── exampleimportexport/         # Sample deck files for testing import/export
 │   ├── piltoverarchive/
 │   ├── riftboundgg/
-│   └── superriftdeck/
+│   ├── superriftdeck/
+│   └── cardnexus/
 ├── public/
 │   └── data/
 │       ├── images/               # Card images (WebP, generated)
@@ -84,7 +84,6 @@ super-rift-deck/
 │       └── indexes.json         # Filter options (generated)
 ├── scripts/
 │   ├── fetch-cards.mjs          # Riftcodex API fetch script
-│   └── update-banned.mjs       # Banned card list updater
 ├── src/
 │   ├── index.html               # App shell
 │   ├── main.js                  # Entry point & state management
