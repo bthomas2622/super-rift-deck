@@ -314,7 +314,7 @@ export function filterStateToParams(state) {
   if (state.supertypes.size > 0) params.set('supertypes', [...state.supertypes].join(','));
   if (state.sets.size > 0) params.set('sets', [...state.sets].join(','));
   if (state.rarities.size > 0) params.set('rarities', [...state.rarities].join(','));
-  if (state.energy !== null) params.set('energy', String(state.energy));
+  if (state.energy.size > 0) params.set('energy', [...state.energy].join(','));
   if (state.sort !== 'collector') params.set('sort', state.sort);
   if (state.sortDir !== 'asc') params.set('dir', state.sortDir);
   if (state.hideBanned) params.set('hideBanned', '1');
@@ -331,7 +331,9 @@ export function filterStateFromParams(state, params) {
   if (params.has('supertypes')) state.supertypes = new Set(params.get('supertypes').split(',').filter(Boolean));
   if (params.has('sets')) state.sets = new Set(params.get('sets').split(',').filter(Boolean));
   if (params.has('rarities')) state.rarities = new Set(params.get('rarities').split(',').filter(Boolean));
-  if (params.has('energy')) state.energy = parseInt(params.get('energy'), 10);
+  if (params.has('energy')) {
+    state.energy = new Set(params.get('energy').split(',').filter(Boolean).map(Number));
+  }
   if (params.has('sort')) state.sort = params.get('sort');
   if (params.has('dir')) state.sortDir = params.get('dir');
   if (params.has('hideBanned')) state.hideBanned = params.get('hideBanned') === '1';
