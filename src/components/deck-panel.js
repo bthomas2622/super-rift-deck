@@ -15,7 +15,7 @@ const SECTIONS = [
   { key: 'sideboard', title: 'Sideboard', target: 8, optional: true },
 ];
 
-export function renderDeckPanel(container, deckState, { onRemove, onChangeQty, onClear, onExport, onImport, onAutoRunes, onRandomLegend, onSampleDeck, onHover, onHoverEnd, onToggleSideboard }) {
+export function renderDeckPanel(container, deckState, { onRemove, onChangeQty, onClear, onExport, onImport, onShare, onAutoRunes, onRandomLegend, onSampleDeck, onHover, onHoverEnd, onToggleSideboard, collection = null }) {
   container.innerHTML = '';
 
   // Header
@@ -35,6 +35,14 @@ export function renderDeckPanel(container, deckState, { onRemove, onChangeQty, o
   exportBtn.textContent = 'Export';
   exportBtn.addEventListener('click', onExport);
   actions.appendChild(exportBtn);
+
+  if (onShare) {
+    const shareBtn = el('button');
+    shareBtn.textContent = 'Share';
+    shareBtn.title = 'Copy a share link to your clipboard';
+    shareBtn.addEventListener('click', onShare);
+    actions.appendChild(shareBtn);
+  }
 
   const clearBtn = el('button');
   clearBtn.textContent = 'Clear';
@@ -130,7 +138,9 @@ export function renderDeckPanel(container, deckState, { onRemove, onChangeQty, o
       if (card) {
         list.appendChild(makeCardEntry(card.name, 1, card.attributes?.energy, () => {
           onRemove(sec.key, card.name);
-        }, onHover ? () => onHover(card) : null, onHoverEnd ?? null));
+        }, onHover ? () => onHover(card) : null, onHoverEnd ?? null,
+          ownedFor(card, collection),
+        ));
       }
     } else {
       const map = deckState[sec.key];
@@ -151,6 +161,7 @@ export function renderDeckPanel(container, deckState, { onRemove, onChangeQty, o
           () => onRemove(sec.key, name),
           onHover ? () => onHover(entry.card) : null,
           onHoverEnd ?? null,
+          ownedFor(entry.card, collection),
         ));
       }
     }
@@ -179,7 +190,7 @@ function getSectionCount(deckState, key) {
   return n;
 }
 
-function makeCardEntry(name, qty, energy, onRemove, onHover, onHoverEnd) {
+function makeCardEntry(name, qty, energy, onRemove, onHover, onHoverEnd, owned) {
   const li = el('li', 'deck-card-entry');
   if (BANNED_CARDS.has(name)) li.classList.add('banned');
   if (onHover) li.addEventListener('mouseenter', onHover);
@@ -192,6 +203,9 @@ function makeCardEntry(name, qty, energy, onRemove, onHover, onHoverEnd) {
   const nameEl = el('span', 'deck-card-name');
   nameEl.textContent = BANNED_CARDS.has(name) ? `${name} (banned from Standard Constructed)` : name;
   li.appendChild(nameEl);
+
+  const ownedEl = makeOwnedBadge(owned, qty);
+  if (ownedEl) li.appendChild(ownedEl);
 
   const qtyDiv = el('div', 'deck-card-qty');
   const removeBtn = el('button');
@@ -204,7 +218,7 @@ function makeCardEntry(name, qty, energy, onRemove, onHover, onHoverEnd) {
   return li;
 }
 
-function makeCardEntryWithQty(name, qty, energy, onMinus, onPlus, onRemove, onHover, onHoverEnd) {
+function makeCardEntryWithQty(name, qty, energy, onMinus, onPlus, onRemove, onHover, onHoverEnd, owned) {
   const li = el('li', 'deck-card-entry');
   if (BANNED_CARDS.has(name)) li.classList.add('banned');
   if (onHover) li.addEventListener('mouseenter', onHover);
@@ -217,6 +231,9 @@ function makeCardEntryWithQty(name, qty, energy, onMinus, onPlus, onRemove, onHo
   const nameEl = el('span', 'deck-card-name');
   nameEl.textContent = BANNED_CARDS.has(name) ? `${name} (banned from Standard Constructed)` : name;
   li.appendChild(nameEl);
+
+  const ownedEl = makeOwnedBadge(owned, qty);
+  if (ownedEl) li.appendChild(ownedEl);
 
   const qtyDiv = el('div', 'deck-card-qty');
 
@@ -236,6 +253,29 @@ function makeCardEntryWithQty(name, qty, energy, onMinus, onPlus, onRemove, onHo
 
   li.appendChild(qtyDiv);
   return li;
+}
+
+/** Returns total owned (normal + foil) for a card, or null if no collection tracked. */
+function ownedFor(card, collection) {
+  if (!collection || collection.size === 0) return null;
+  const setId = card.set?.set_id ?? '';
+  const col = String(card.collector_number ?? 0).padStart(3, '0');
+  const entry = collection.get(`${setId}-${col}`);
+  if (!entry) return 0;
+  return (entry.normal ?? 0) + (entry.foil ?? 0);
+}
+
+function makeOwnedBadge(owned, needed) {
+  if (owned == null) return null;
+  const span = el('span', 'deck-card-owned');
+  span.textContent = `${Math.min(owned, needed)}/${needed}`;
+  if (owned < needed) {
+    span.classList.add('short');
+    span.title = `You own ${owned} — short ${needed - owned}`;
+  } else {
+    span.title = `You own ${owned}`;
+  }
+  return span;
 }
 
 function el(tag, className) {

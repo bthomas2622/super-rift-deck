@@ -10,6 +10,7 @@ import { renderDeckDetails, computeRuneSplit } from './components/deck-details.j
 import { showIOModal, exportDeckAs, importDeckFrom } from './components/deck-io.js';
 import { renderHandSimulator } from './components/hand-simulator.js';
 import { showCollectionIOModal, exportCollectionAs, importCollectionFrom, shortId } from './components/collection-io.js';
+import { showToast } from './components/toast.js';
 
 // ---- State ----
 
@@ -53,6 +54,7 @@ const viewCardBtn = document.getElementById('view-card');
 const viewDeckBtn = document.getElementById('view-deck');
 const viewDetailsBtn = document.getElementById('view-details');
 const viewHandBtn = document.getElementById('view-hand');
+const activeFiltersEl = document.getElementById('active-filters');
 const deckGridEl = document.getElementById('deck-grid');
 const handSimEl = document.getElementById('hand-simulator');
 const hoverPreviewEl = document.getElementById('deck-hover-preview');
@@ -159,6 +161,14 @@ async function loadData() {
   // Restore filters from URL params
   filterStateFromParams(filterState, new URLSearchParams(window.location.search));
 
+  // Apply any ?deck=... share link
+  applySharedDeckFromUrl();
+
+  // Default the filter bar to collapsed on narrow viewports.
+  if (window.matchMedia('(max-width: 700px)').matches) {
+    filtersEl.classList.add('filters-collapsed');
+  }
+
   // Initial render
   refresh();
 }
@@ -212,8 +222,69 @@ function collectionUIProps() {
   };
 }
 
+function renderActiveFilterChips() {
+  activeFiltersEl.innerHTML = '';
+  const chips = [];
+
+  if (filterState.tab !== 'All') {
+    chips.push({ label: filterState.tab, onRemove: () => {
+      filterState.tab = 'All';
+      filterState.types = new Set();
+    }});
+  }
+  if (filterState.search) {
+    chips.push({ label: `"${filterState.search}"`, onRemove: () => { filterState.search = ''; } });
+  }
+  for (const d of filterState.domains) {
+    chips.push({ label: d, kind: `domain-${d.toLowerCase()}`, onRemove: () => filterState.domains.delete(d) });
+  }
+  for (const v of filterState.energy) {
+    chips.push({ label: `Energy ${v === 8 ? '8+' : v}`, onRemove: () => filterState.energy.delete(v) });
+  }
+  for (const t of filterState.types) {
+    chips.push({ label: t, onRemove: () => filterState.types.delete(t) });
+  }
+  for (const s of filterState.supertypes) {
+    chips.push({ label: s, onRemove: () => filterState.supertypes.delete(s) });
+  }
+  for (const s of filterState.sets) {
+    chips.push({ label: s, onRemove: () => filterState.sets.delete(s) });
+  }
+  for (const r of filterState.rarities) {
+    chips.push({ label: r, onRemove: () => filterState.rarities.delete(r) });
+  }
+  if (filterState.onlyOwned) {
+    chips.push({ label: 'Owned only', onRemove: () => { filterState.onlyOwned = false; } });
+  }
+
+  if (chips.length === 0) {
+    activeFiltersEl.classList.add('hidden');
+    return;
+  }
+  activeFiltersEl.classList.remove('hidden');
+
+  for (const chip of chips) {
+    const el = document.createElement('span');
+    el.className = `filter-chip${chip.kind ? ' filter-chip-' + chip.kind : ''}`;
+    const text = document.createElement('span');
+    text.textContent = chip.label;
+    el.appendChild(text);
+    const x = document.createElement('button');
+    x.className = 'filter-chip-close';
+    x.setAttribute('aria-label', `Remove ${chip.label} filter`);
+    x.textContent = '×';
+    x.addEventListener('click', () => {
+      chip.onRemove();
+      onFilterChangeHard();
+    });
+    el.appendChild(x);
+    activeFiltersEl.appendChild(el);
+  }
+}
+
 function renderGrid() {
   filteredCards = sortCards(applyFilters(allCards, filterState, sets, collectionState), filterState.sort, filterState.sortDir);
+  renderActiveFilterChips();
   renderCardGrid(gridEl, filteredCards, deckState, addCardToDeck, showPreview, {}, collectionState);
 }
 
@@ -224,6 +295,7 @@ function refresh() {
   filteredCards = sortCards(applyFilters(allCards, filterState, sets, collectionState), filterState.sort, filterState.sortDir);
   pushFiltersToURL();
   renderFilters(filtersEl, filterState, indexes, sets, onFilterChange, onFilterChangeHard, collectionUIProps());
+  renderActiveFilterChips();
   renderCardGrid(gridEl, filteredCards, deckState, addCardToDeck, showPreview, {}, collectionState);
   renderDeckPanel(deckEl, deckState, {
     onRemove: removeCard,
@@ -231,6 +303,7 @@ function refresh() {
     onClear: clearDeck,
     onExport: exportDeck,
     onImport: importDeck,
+    onShare: shareDeck,
     onAutoRunes: autoFillRunes,
     onRandomLegend: randomLegend,
     onSampleDeck: loadSampleDeck,
@@ -240,6 +313,7 @@ function refresh() {
       deckState.addToSideboard = !deckState.addToSideboard;
       refresh();
     },
+    collection: collectionState,
   });
 
   if (activeView === 'deck') {
@@ -661,11 +735,17 @@ function importCollection() {
     onExport() { return ''; },
     onImport(text, formatId) {
       const result = importCollectionFrom(text, formatId, allCards, sets);
-      if (!result) return;
+      if (!result || result.size === 0) {
+        showToast('Could not parse any cards from that file', { type: 'error' });
+        return;
+      }
       collectionState.clear();
       for (const [sid, entry] of result) collectionState.set(sid, entry);
       saveCollectionToStorage();
       refresh();
+      let total = 0;
+      for (const { normal, foil } of result.values()) total += (normal ?? 0) + (foil ?? 0);
+      showToast(`Imported ${total} cards (${result.size} unique)`, { type: 'success' });
     },
   });
 }
@@ -681,11 +761,27 @@ function exportCollection() {
 
 function clearCollection() {
   if (collectionState.size === 0) return;
-  if (!confirm(`Clear your collection (${collectionState.size} unique cards)? This cannot be undone.`)) return;
+  const snapshot = new Map();
+  for (const [sid, entry] of collectionState) {
+    snapshot.set(sid, { ...entry });
+  }
+  const previousOnlyOwned = filterState.onlyOwned;
+
   collectionState.clear();
   filterState.onlyOwned = false;
   saveCollectionToStorage();
   refresh();
+
+  showToast(`Cleared ${snapshot.size} unique cards from your collection`, {
+    action: 'Undo',
+    onAction: () => {
+      for (const [sid, entry] of snapshot) collectionState.set(sid, entry);
+      filterState.onlyOwned = previousOnlyOwned;
+      saveCollectionToStorage();
+      refresh();
+    },
+    duration: 8000,
+  });
 }
 
 function saveCollectionToStorage() {
@@ -725,6 +821,122 @@ function loadCollectionFromStorage() {
   } catch {
     // ignore
   }
+}
+
+// ---- Share via URL ----
+
+function encodeDeckParam(deck) {
+  const part = (map) => [...map.values()]
+    .map(({ card, count }) => `${shortId(card)}:${count}`)
+    .join(',');
+  const legend = deck.legend ? shortId(deck.legend) : '';
+  const champion = deck.champion ? shortId(deck.champion) : '';
+  return [legend, champion, part(deck.mainDeck), part(deck.runes), part(deck.battlefields), part(deck.sideboard)].join('|');
+}
+
+function decodeDeckParam(text) {
+  const parts = text.split('|');
+  if (parts.length < 6) return null;
+
+  const byShortId = new Map();
+  for (const card of allCards) {
+    if (card.metadata?.alternate_art || card.metadata?.overnumbered || card.metadata?.signature) continue;
+    const sid = shortId(card);
+    if (!byShortId.has(sid)) byShortId.set(sid, card);
+  }
+
+  const result = {
+    legend: parts[0] ? byShortId.get(parts[0]) ?? null : null,
+    champion: parts[1] ? byShortId.get(parts[1]) ?? null : null,
+    mainDeck: new Map(),
+    runes: new Map(),
+    battlefields: new Map(),
+    sideboard: new Map(),
+  };
+
+  const sectionKeys = ['mainDeck', 'runes', 'battlefields', 'sideboard'];
+  for (let i = 0; i < sectionKeys.length; i++) {
+    const raw = parts[i + 2];
+    if (!raw) continue;
+    for (const entry of raw.split(',')) {
+      const m = entry.match(/^([A-Z]+-\d+):(\d+)$/);
+      if (!m) continue;
+      const card = byShortId.get(m[1]);
+      if (!card) continue;
+      result[sectionKeys[i]].set(card.name, { card, count: parseInt(m[2], 10) || 1 });
+    }
+  }
+
+  return result;
+}
+
+function shareDeck() {
+  const encoded = encodeDeckParam(deckState);
+  const url = new URL(window.location.href);
+  url.search = `deck=${encodeURIComponent(encoded)}`;
+  const link = url.toString();
+  navigator.clipboard.writeText(link).then(
+    () => showToast('Deck link copied to clipboard', { type: 'success' }),
+    () => showToast('Failed to copy link', { type: 'error' }),
+  );
+}
+
+function applySharedDeckFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const raw = params.get('deck');
+  if (!raw) return;
+  const incoming = decodeDeckParam(raw);
+  if (!incoming) return;
+
+  const currentEmpty = !deckState.legend && !deckState.champion
+    && deckState.mainDeck.size === 0 && deckState.runes.size === 0
+    && deckState.battlefields.size === 0 && deckState.sideboard.size === 0;
+
+  // Strip the deck param from the URL either way — we don't want it sticking.
+  params.delete('deck');
+  history.replaceState(null, '', `${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`);
+
+  const applyIncoming = () => {
+    deckState.legend = incoming.legend;
+    deckState.champion = incoming.champion;
+    deckState.mainDeck = incoming.mainDeck;
+    deckState.runes = incoming.runes;
+    deckState.battlefields = incoming.battlefields;
+    deckState.sideboard = incoming.sideboard;
+    saveDeckToStorage();
+    refresh();
+    showToast('Shared deck loaded', { type: 'success' });
+  };
+
+  if (currentEmpty) {
+    applyIncoming();
+    return;
+  }
+
+  // Snapshot the current deck so Undo can restore it.
+  const snapshot = {
+    legend: deckState.legend,
+    champion: deckState.champion,
+    mainDeck: new Map(deckState.mainDeck),
+    runes: new Map(deckState.runes),
+    battlefields: new Map(deckState.battlefields),
+    sideboard: new Map(deckState.sideboard),
+  };
+  applyIncoming();
+  showToast('Replaced your current deck with shared deck', {
+    action: 'Undo',
+    onAction: () => {
+      deckState.legend = snapshot.legend;
+      deckState.champion = snapshot.champion;
+      deckState.mainDeck = snapshot.mainDeck;
+      deckState.runes = snapshot.runes;
+      deckState.battlefields = snapshot.battlefields;
+      deckState.sideboard = snapshot.sideboard;
+      saveDeckToStorage();
+      refresh();
+    },
+    duration: 8000,
+  });
 }
 
 // ---- Boot ----

@@ -49,11 +49,42 @@ export function createFilterState() {
 }
 
 export function renderFilters(container, filterState, indexes, sets, onChange, onChangeHard, collectionUI = null) {
+  // Preserve mobile-collapsed state across re-renders.
+  const wasCollapsed = container.classList.contains('filters-collapsed');
   container.innerHTML = '';
+  if (wasCollapsed) container.classList.add('filters-collapsed');
 
-  // Row 1: Tabs + search
+  // Row 1: Search + collapse toggle (always visible)
   const row1 = el('div', 'filter-row');
 
+  const searchInput = document.createElement('input');
+  searchInput.type = 'text';
+  searchInput.className = 'filter-search';
+  searchInput.placeholder = 'Search cards by name or text...';
+  searchInput.value = filterState.search;
+  searchInput.addEventListener('input', () => {
+    filterState.search = searchInput.value;
+    onChange();
+  });
+  row1.appendChild(searchInput);
+
+  // Disclosure button to collapse all rows below.
+  const moreBtn = el('button', 'filters-more-btn');
+  moreBtn.type = 'button';
+  const updateMoreBtnText = () => {
+    moreBtn.textContent = container.classList.contains('filters-collapsed') ? 'Show Filters ▾' : 'Hide Filters ▴';
+  };
+  moreBtn.addEventListener('click', () => {
+    container.classList.toggle('filters-collapsed');
+    updateMoreBtnText();
+  });
+  updateMoreBtnText();
+  row1.appendChild(moreBtn);
+
+  container.appendChild(row1);
+
+  // Tab row (collapsible)
+  const tabRow = el('div', 'filter-row filter-row-collapsible');
   const tabs = el('div', 'tab-toggles');
   for (const tab of DECK_TABS) {
     const btn = el('button', `tab-btn${filterState.tab === tab ? ' active' : ''}`);
@@ -66,22 +97,11 @@ export function renderFilters(container, filterState, indexes, sets, onChange, o
     });
     tabs.appendChild(btn);
   }
-  row1.appendChild(tabs);
-
-  const searchInput = document.createElement('input');
-  searchInput.type = 'text';
-  searchInput.className = 'filter-search';
-  searchInput.placeholder = 'Search cards by name or text...';
-  searchInput.value = filterState.search;
-  searchInput.addEventListener('input', () => {
-    filterState.search = searchInput.value;
-    onChange();
-  });
-  row1.appendChild(searchInput);
-  container.appendChild(row1);
+  tabRow.appendChild(tabs);
+  container.appendChild(tabRow);
 
   // Row 2: Domains + energy cost
-  const row2 = el('div', 'filter-row');
+  const row2 = el('div', 'filter-row filter-row-collapsible');
 
   const domainLabel = el('span', 'filter-label');
   domainLabel.textContent = 'Domain';
@@ -129,7 +149,7 @@ export function renderFilters(container, filterState, indexes, sets, onChange, o
   container.appendChild(row2);
 
   // Row 3: Filter dropdowns
-  const row3 = el('div', 'filter-row');
+  const row3 = el('div', 'filter-row filter-row-collapsible');
 
   const filterLabel = el('span', 'filter-label');
   filterLabel.textContent = 'Filter';
@@ -152,7 +172,7 @@ export function renderFilters(container, filterState, indexes, sets, onChange, o
   container.appendChild(row3);
 
   // Row 4: Sort options
-  const row4 = el('div', 'filter-row');
+  const row4 = el('div', 'filter-row filter-row-collapsible');
 
   const sortLabel = el('span', 'filter-label');
   sortLabel.textContent = 'Sort';
@@ -188,7 +208,7 @@ export function renderFilters(container, filterState, indexes, sets, onChange, o
   container.appendChild(row4);
 
   // Row 5: Banned cards toggle + owned toggle
-  const row5 = el('div', 'filter-row');
+  const row5 = el('div', 'filter-row filter-row-collapsible');
 
   const bannedLabel = document.createElement('label');
   bannedLabel.className = 'filter-toggle-label';
@@ -246,7 +266,7 @@ export function renderFilters(container, filterState, indexes, sets, onChange, o
 
   // Row 6: Collection import/export
   if (collectionUI) {
-    const row6 = el('div', 'filter-row collection-row');
+    const row6 = el('div', 'filter-row collection-row filter-row-collapsible');
 
     const collLabel = el('span', 'filter-label');
     collLabel.textContent = 'Collection';

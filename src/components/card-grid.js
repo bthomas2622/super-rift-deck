@@ -1,10 +1,26 @@
 /**
  * Card grid component — renders the filterable card image grid.
+ *
+ * Progressive rendering: cards beyond CHUNK_SIZE are rendered in additional
+ * chunks as a sentinel scrolls into view. Keeps first-paint snappy and the
+ * DOM bounded when filters return hundreds of cards.
  */
 
 import { BANNED_CARDS } from './filters.js';
 
+const CHUNK_SIZE = 80;
+
+// Each container is allowed one IntersectionObserver at a time.
+const observers = new WeakMap();
+
 export function renderCardGrid(container, cards, deckState, onAdd, onPreview, { showMaxed = true } = {}, collection = null) {
+  // Tear down any prior observer attached to this container.
+  const prev = observers.get(container);
+  if (prev) {
+    prev.disconnect();
+    observers.delete(container);
+  }
+
   container.innerHTML = '';
 
   if (!cards || cards.length === 0) {
@@ -15,73 +31,98 @@ export function renderCardGrid(container, cards, deckState, onAdd, onPreview, { 
     return;
   }
 
-  // Use a document fragment for performance
-  const fragment = document.createDocumentFragment();
+  const ctx = { deckState, onAdd, onPreview, showMaxed, collection };
+  let cursor = 0;
 
-  for (const card of cards) {
-    const cell = document.createElement('div');
-    cell.className = 'card-cell';
-
-    const inDeckCount = getDeckCount(card, deckState);
-    const maxCopies = getMaxCopies(card);
-    if (showMaxed && inDeckCount >= maxCopies) {
-      cell.classList.add('maxed');
+  const appendChunk = () => {
+    const end = Math.min(cursor + CHUNK_SIZE, cards.length);
+    const fragment = document.createDocumentFragment();
+    for (let i = cursor; i < end; i++) {
+      fragment.appendChild(makeCardCell(cards[i], ctx));
     }
+    container.appendChild(fragment);
+    cursor = end;
+  };
 
-    // Card image
-    const img = document.createElement('img');
-    img.alt = card.name ?? 'Card';
-    img.loading = 'lazy';
-    img.src = card.media?.local_image ?? card.media?.image_url ?? '';
-    cell.appendChild(img);
+  appendChunk();
 
-    // Count badge
-    if (inDeckCount > 0) {
-      const badge = document.createElement('span');
-      badge.className = 'card-count-badge visible';
-      badge.textContent = `×${inDeckCount}`;
-      cell.appendChild(badge);
-    }
+  if (cursor < cards.length && 'IntersectionObserver' in window) {
+    const sentinel = document.createElement('div');
+    sentinel.className = 'card-grid-sentinel';
+    sentinel.setAttribute('aria-hidden', 'true');
+    container.appendChild(sentinel);
 
-    // Ownership badge (bottom-left)
-    if (collection) {
-      const setId = card.set?.set_id ?? '';
-      const col = String(card.collector_number ?? 0).padStart(3, '0');
-      const owned = collection.get(`${setId}-${col}`);
-      if (owned) {
-        const ownBadge = document.createElement('span');
-        ownBadge.className = 'card-owned-badge';
-        const total = (owned.normal ?? 0) + (owned.foil ?? 0);
-        ownBadge.textContent = owned.foil > 0
-          ? `${total}  ✦${owned.foil}`
-          : `${total}`;
-        ownBadge.title = `Owned: ${owned.normal} normal, ${owned.foil} foil`;
-        cell.appendChild(ownBadge);
+    const io = new IntersectionObserver((entries) => {
+      if (!entries[0].isIntersecting) return;
+      // Move sentinel out, append next chunk, then re-append sentinel at the end.
+      sentinel.remove();
+      appendChunk();
+      if (cursor < cards.length) {
+        container.appendChild(sentinel);
+      } else {
+        io.disconnect();
+        observers.delete(container);
       }
-    }
+    }, { root: container, rootMargin: '400px 0px' });
+    io.observe(sentinel);
+    observers.set(container, io);
+  }
+}
 
-    // Name overlay
-    const nameOverlay = document.createElement('div');
-    nameOverlay.className = 'card-name-overlay';
-    nameOverlay.textContent = card.name ?? '';
-    cell.appendChild(nameOverlay);
+function makeCardCell(card, { deckState, onAdd, onPreview, showMaxed, collection }) {
+  const cell = document.createElement('div');
+  cell.className = 'card-cell';
 
-    // Left-click: add to deck
-    cell.addEventListener('click', (e) => {
-      e.stopPropagation();
-      onAdd(card);
-    });
-
-    // Right-click: preview
-    cell.addEventListener('contextmenu', (e) => {
-      e.preventDefault();
-      onPreview(card);
-    });
-
-    fragment.appendChild(cell);
+  const inDeckCount = getDeckCount(card, deckState);
+  const maxCopies = getMaxCopies(card);
+  if (showMaxed && inDeckCount >= maxCopies) {
+    cell.classList.add('maxed');
   }
 
-  container.appendChild(fragment);
+  const img = document.createElement('img');
+  img.alt = card.name ?? 'Card';
+  img.loading = 'lazy';
+  img.src = card.media?.local_image ?? card.media?.image_url ?? '';
+  cell.appendChild(img);
+
+  if (inDeckCount > 0) {
+    const badge = document.createElement('span');
+    badge.className = 'card-count-badge visible';
+    badge.textContent = `×${inDeckCount}`;
+    cell.appendChild(badge);
+  }
+
+  if (collection) {
+    const setId = card.set?.set_id ?? '';
+    const col = String(card.collector_number ?? 0).padStart(3, '0');
+    const owned = collection.get(`${setId}-${col}`);
+    if (owned) {
+      const ownBadge = document.createElement('span');
+      ownBadge.className = 'card-owned-badge';
+      const total = (owned.normal ?? 0) + (owned.foil ?? 0);
+      ownBadge.textContent = owned.foil > 0
+        ? `${total}  ✦${owned.foil}`
+        : `${total}`;
+      ownBadge.title = `Owned: ${owned.normal} normal, ${owned.foil} foil`;
+      cell.appendChild(ownBadge);
+    }
+  }
+
+  const nameOverlay = document.createElement('div');
+  nameOverlay.className = 'card-name-overlay';
+  nameOverlay.textContent = card.name ?? '';
+  cell.appendChild(nameOverlay);
+
+  cell.addEventListener('click', (e) => {
+    e.stopPropagation();
+    onAdd(card);
+  });
+  cell.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    onPreview(card);
+  });
+
+  return cell;
 }
 
 /**

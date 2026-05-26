@@ -209,6 +209,28 @@ body {
   position: relative;
 }
 
+.filters-more-btn {
+  padding: 6px 12px;
+  background: transparent;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  border-radius: var(--radius);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+}
+.filters-more-btn:hover {
+  background: var(--accent);
+  color: var(--bg-primary);
+}
+
+.filters-bar.filters-collapsed .filter-row-collapsible {
+  display: none;
+}
+
 .filter-label {
   font-family: 'Cinzel', serif;
   font-size: 10px;
@@ -460,6 +482,60 @@ body {
   font-weight: 600;
 }
 
+/* ---- Active filter chips ---- */
+.active-filters {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 8px 14px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 4px 3px 10px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 0.3px;
+  line-height: 1;
+}
+
+.filter-chip-close {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 14px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: background 0.12s, color 0.12s;
+}
+.filter-chip-close:hover {
+  background: var(--danger);
+  color: var(--text-primary);
+}
+
+.filter-chip-domain-fury  { color: var(--domain-fury);  border-color: rgba(232, 64, 87, 0.5); }
+.filter-chip-domain-calm  { color: var(--domain-calm);  border-color: rgba(10, 206, 131, 0.5); }
+.filter-chip-domain-mind  { color: var(--domain-mind);  border-color: rgba(10, 156, 189, 0.5); }
+.filter-chip-domain-body  { color: var(--domain-body);  border-color: rgba(232, 128, 58, 0.5); }
+.filter-chip-domain-chaos { color: var(--domain-chaos); border-color: rgba(197, 89, 232, 0.5); }
+.filter-chip-domain-order { color: var(--domain-order); border-color: rgba(232, 212, 77, 0.5); }
+
 /* ---- Card Grid ---- */
 .card-grid {
   flex: 1;
@@ -470,6 +546,12 @@ body {
   flex-wrap: wrap;
   gap: 10px;
   align-content: flex-start;
+}
+
+.card-grid-sentinel {
+  width: 100%;
+  height: 1px;
+  flex-basis: 100%;
 }
 
 .card-cell {
@@ -829,6 +911,23 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.deck-card-owned {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.3px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: rgba(200, 170, 110, 0.08);
+  flex-shrink: 0;
+}
+.deck-card-owned.short {
+  color: var(--danger);
+  background: rgba(232, 64, 87, 0.12);
+  border-color: rgba(232, 64, 87, 0.35);
 }
 
 .deck-card-qty {
@@ -1273,6 +1372,86 @@ body {
 
 .hidden {
   display: none !important;
+}
+
+/* ---- Toasts ---- */
+.toast-container {
+  position: fixed;
+  bottom: 36px;
+  right: 16px;
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 240px;
+  max-width: 380px;
+  padding: 10px 12px 10px 14px;
+  background: var(--panel-bg);
+  border: 1px solid var(--border-color);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-size: 13px;
+  box-shadow: var(--shadow-panel);
+  opacity: 0;
+  transform: translateX(20px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.toast-error {
+  border-left-color: var(--danger);
+}
+
+.toast-success {
+  border-left-color: var(--success);
+}
+
+.toast-msg {
+  flex: 1;
+  line-height: 1.35;
+}
+
+.toast-action {
+  background: transparent;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.toast-action:hover {
+  background: var(--accent);
+  color: var(--bg-primary);
+}
+
+.toast-close {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+}
+.toast-close:hover {
+  color: var(--text-primary);
 }
 
 .card-preview img {
