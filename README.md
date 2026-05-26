@@ -15,6 +15,7 @@ A web-based deckbuilder for **Riftbound**, the Trading Card Game by Riot Games. 
   - Max 3 total Signature cards matching your Legend's champion tag
   - Rune Deck exactly 12, Battlefields exactly 3 with unique names
 - **Import / Export** — Copy deck lists to clipboard or import from text, supporting multiple formats (Super Rift Deck, Riftbound.gg, PiltoverArchive, Rift Atlas, CardNexus)
+- **Collection Tracking** — Import/export your owned card collection as CSV (Super Rift Deck, Riftbound.gg, PiltoverArchive, CardNexus). Each card tile shows an ownership badge, and a filter toggle limits the browser to cards you own.
 - **Deck Image Export** — Generate a high-resolution PNG snapshot of your deck with section labels, card images, and layout for sharing
 - **Sample Deck** — One-click load of a sample Budget Jinx decklist
 - **Hand Simulator** — Draw a simulated opening hand of 4 cards and mulligan up to 2
@@ -66,16 +67,21 @@ super-rift-deck/
 │   ├── ISSUE_TEMPLATE/
 │   │   ├── bug_report.yml       # Bug report issue template
 │   │   └── feedback.yml         # Feedback / feature request template
-│   ├── skills/
-│   │   └── riftboundrules.md    # Riftbound rules reference for Copilot
 │   └── workflows/
 │       ├── deploy.yml           # Build & deploy to GitHub Pages
 │       ├── fetch-cards.yml      # Nightly card data fetch (cron + manual)
-├── exampleimportexport/         # Sample deck files for testing import/export
-│   ├── piltoverarchive/
-│   ├── riftboundgg/
-│   ├── superriftdeck/
-│   └── cardnexus/
+├── exampleimportexport/         # Sample files for testing import/export
+│   ├── deck/                    # Decklist samples per format
+│   │   ├── cardnexus/
+│   │   ├── piltoverarchive/
+│   │   ├── riftatlas/
+│   │   ├── riftboundgg/
+│   │   └── superriftdeck/
+│   └── collection/              # Collection (owned cards) samples per format
+│       ├── cardnexus/
+│       ├── piltoverarchive/
+│       ├── riftboundgg/
+│       └── superriftdeck/
 ├── public/
 │   └── data/
 │       ├── images/               # Card images (WebP, generated)

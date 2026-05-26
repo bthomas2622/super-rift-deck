@@ -4,7 +4,7 @@
 
 import { BANNED_CARDS } from './filters.js';
 
-export function renderCardGrid(container, cards, deckState, onAdd, onPreview, { showMaxed = true } = {}) {
+export function renderCardGrid(container, cards, deckState, onAdd, onPreview, { showMaxed = true } = {}, collection = null) {
   container.innerHTML = '';
 
   if (!cards || cards.length === 0) {
@@ -41,6 +41,23 @@ export function renderCardGrid(container, cards, deckState, onAdd, onPreview, { 
       badge.className = 'card-count-badge visible';
       badge.textContent = `×${inDeckCount}`;
       cell.appendChild(badge);
+    }
+
+    // Ownership badge (bottom-left)
+    if (collection) {
+      const setId = card.set?.set_id ?? '';
+      const col = String(card.collector_number ?? 0).padStart(3, '0');
+      const owned = collection.get(`${setId}-${col}`);
+      if (owned) {
+        const ownBadge = document.createElement('span');
+        ownBadge.className = 'card-owned-badge';
+        const total = (owned.normal ?? 0) + (owned.foil ?? 0);
+        ownBadge.textContent = owned.foil > 0
+          ? `${total}  ✦${owned.foil}`
+          : `${total}`;
+        ownBadge.title = `Owned: ${owned.normal} normal, ${owned.foil} foil`;
+        cell.appendChild(ownBadge);
+      }
     }
 
     // Name overlay

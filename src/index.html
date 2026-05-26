@@ -53,6 +53,34 @@
   <!-- Card preview overlay -->
   <div id="card-preview" class="card-preview hidden">
     <img id="card-preview-img" src="" alt="Card preview" />
+    <aside id="card-preview-side" class="card-preview-side">
+      <div id="card-preview-name" class="card-preview-name"></div>
+      <div class="card-preview-collection">
+        <div class="card-preview-collection-label">In Collection</div>
+        <div class="card-preview-total">
+          <span id="card-preview-count-total" class="card-preview-count-total">0</span>
+          <span class="card-preview-total-label">total</span>
+        </div>
+
+        <div class="card-preview-stepper">
+          <div class="card-preview-stepper-label">Normal</div>
+          <div class="card-preview-stepper-row">
+            <button id="card-preview-remove-normal" class="card-preview-btn" title="Remove a normal copy">−</button>
+            <span id="card-preview-count-normal" class="card-preview-stepper-count">0</span>
+            <button id="card-preview-add-normal" class="card-preview-btn" title="Add a normal copy">+</button>
+          </div>
+        </div>
+
+        <div class="card-preview-stepper">
+          <div class="card-preview-stepper-label card-preview-stepper-label-foil">Foil ✦</div>
+          <div class="card-preview-stepper-row">
+            <button id="card-preview-remove-foil" class="card-preview-btn" title="Remove a foil copy">−</button>
+            <span id="card-preview-count-foil" class="card-preview-stepper-count">0</span>
+            <button id="card-preview-add-foil" class="card-preview-btn" title="Add a foil copy">+</button>
+          </div>
+        </div>
+      </div>
+    </aside>
   </div>
 
   <script type="module" src="./main.js"></script>

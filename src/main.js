@@ -9,6 +9,7 @@ import { renderDeckPanel } from './components/deck-panel.js';
 import { renderDeckDetails, computeRuneSplit } from './components/deck-details.js';
 import { showIOModal, exportDeckAs, importDeckFrom } from './components/deck-io.js';
 import { renderHandSimulator } from './components/hand-simulator.js';
+import { showCollectionIOModal, exportCollectionAs, importCollectionFrom, shortId } from './components/collection-io.js';
 
 // ---- State ----
 
@@ -29,6 +30,9 @@ const deckState = {
   addToSideboard: false,
 };
 
+// shortId → { card, normal, foil }
+const collectionState = new Map();
+
 // ---- DOM refs ----
 
 const filtersEl = document.getElementById('filters');
@@ -37,6 +41,14 @@ const deckEl = document.getElementById('deck-panel');
 const detailsEl = document.getElementById('deck-details');
 const previewEl = document.getElementById('card-preview');
 const previewImg = document.getElementById('card-preview-img');
+const previewNameEl = document.getElementById('card-preview-name');
+const previewCountTotalEl = document.getElementById('card-preview-count-total');
+const previewCountNormalEl = document.getElementById('card-preview-count-normal');
+const previewCountFoilEl = document.getElementById('card-preview-count-foil');
+const previewAddNormalBtn = document.getElementById('card-preview-add-normal');
+const previewRemoveNormalBtn = document.getElementById('card-preview-remove-normal');
+const previewAddFoilBtn = document.getElementById('card-preview-add-foil');
+const previewRemoveFoilBtn = document.getElementById('card-preview-remove-foil');
 const viewCardBtn = document.getElementById('view-card');
 const viewDeckBtn = document.getElementById('view-deck');
 const viewDetailsBtn = document.getElementById('view-details');
@@ -142,6 +154,7 @@ async function loadData() {
 
   // Load saved deck from localStorage
   loadDeckFromStorage();
+  loadCollectionFromStorage();
 
   // Restore filters from URL params
   filterStateFromParams(filterState, new URLSearchParams(window.location.search));
@@ -179,21 +192,39 @@ function onFilterChangeHard() {
   requestAnimationFrame(() => {
     refreshPending = false;
     pushFiltersToURL();
-    renderFilters(filtersEl, filterState, indexes, sets, onFilterChange, onFilterChangeHard);
+    renderFilters(filtersEl, filterState, indexes, sets, onFilterChange, onFilterChangeHard, collectionUIProps());
     renderGrid();
   });
 }
 
+function collectionUIProps() {
+  let totalCards = 0;
+  for (const { normal, foil } of collectionState.values()) {
+    totalCards += (normal ?? 0) + (foil ?? 0);
+  }
+  return {
+    collectionSize: collectionState.size,
+    uniqueCards: collectionState.size,
+    totalCards,
+    onImport: importCollection,
+    onExport: exportCollection,
+    onClear: clearCollection,
+  };
+}
+
 function renderGrid() {
-  filteredCards = sortCards(applyFilters(allCards, filterState, sets), filterState.sort, filterState.sortDir);
-  renderCardGrid(gridEl, filteredCards, deckState, addCardToDeck, showPreview);
+  filteredCards = sortCards(applyFilters(allCards, filterState, sets, collectionState), filterState.sort, filterState.sortDir);
+  renderCardGrid(gridEl, filteredCards, deckState, addCardToDeck, showPreview, {}, collectionState);
 }
 
 function refresh() {
-  filteredCards = sortCards(applyFilters(allCards, filterState, sets), filterState.sort, filterState.sortDir);
+  // Stale hover-preview safety: any deck <li> being hovered is about to be
+  // replaced, and removed entries will never fire mouseleave.
+  hideDeckHoverPreview();
+  filteredCards = sortCards(applyFilters(allCards, filterState, sets, collectionState), filterState.sort, filterState.sortDir);
   pushFiltersToURL();
-  renderFilters(filtersEl, filterState, indexes, sets, onFilterChange, onFilterChangeHard);
-  renderCardGrid(gridEl, filteredCards, deckState, addCardToDeck, showPreview);
+  renderFilters(filtersEl, filterState, indexes, sets, onFilterChange, onFilterChangeHard, collectionUIProps());
+  renderCardGrid(gridEl, filteredCards, deckState, addCardToDeck, showPreview, {}, collectionState);
   renderDeckPanel(deckEl, deckState, {
     onRemove: removeCard,
     onChangeQty: changeQty,
@@ -230,20 +261,61 @@ function renderDeckGrid() {
   for (const [, entry] of deckState.runes) deckCards.push(entry.card);
   for (const [, entry] of deckState.battlefields) deckCards.push(entry.card);
   for (const [, entry] of deckState.sideboard) deckCards.push(entry.card);
-  renderCardGrid(deckGridEl, deckCards, deckState, addCardToDeck, showPreview, { showMaxed: false });
+  renderCardGrid(deckGridEl, deckCards, deckState, addCardToDeck, showPreview, { showMaxed: false }, collectionState);
 }
 
 // ---- Card preview ----
 
+let currentPreviewCard = null;
+
 function showPreview(card) {
+  currentPreviewCard = card;
   previewImg.src = card.media?.local_image ?? card.media?.image_url ?? '';
   previewImg.alt = card.name ?? 'Card preview';
+  previewNameEl.textContent = card.name ?? '';
+  updatePreviewCollectionDisplay();
   previewEl.classList.remove('hidden');
 }
 
-previewEl.addEventListener('click', () => {
-  previewEl.classList.add('hidden');
-  previewImg.src = '';
+function updatePreviewCollectionDisplay() {
+  if (!currentPreviewCard) return;
+  const entry = collectionState.get(shortId(currentPreviewCard));
+  const normal = entry?.normal ?? 0;
+  const foil = entry?.foil ?? 0;
+  previewCountTotalEl.textContent = String(normal + foil);
+  previewCountNormalEl.textContent = String(normal);
+  previewCountFoilEl.textContent = String(foil);
+  previewRemoveNormalBtn.disabled = normal === 0;
+  previewRemoveFoilBtn.disabled = foil === 0;
+}
+
+function adjustCollection(field, delta) {
+  if (!currentPreviewCard) return;
+  const sid = shortId(currentPreviewCard);
+  const entry = collectionState.get(sid) ?? { card: currentPreviewCard, normal: 0, foil: 0 };
+  entry[field] = Math.max(0, entry[field] + delta);
+  if (entry.normal === 0 && entry.foil === 0) {
+    collectionState.delete(sid);
+  } else {
+    collectionState.set(sid, entry);
+  }
+  saveCollectionToStorage();
+  updatePreviewCollectionDisplay();
+  refresh();
+}
+
+previewAddNormalBtn.addEventListener('click', (e) => { e.stopPropagation(); adjustCollection('normal', 1); });
+previewRemoveNormalBtn.addEventListener('click', (e) => { e.stopPropagation(); adjustCollection('normal', -1); });
+previewAddFoilBtn.addEventListener('click', (e) => { e.stopPropagation(); adjustCollection('foil', 1); });
+previewRemoveFoilBtn.addEventListener('click', (e) => { e.stopPropagation(); adjustCollection('foil', -1); });
+
+previewEl.addEventListener('click', (e) => {
+  // Only close on clicks on the overlay background or the image — not the side panel.
+  if (e.target === previewEl || e.target === previewImg) {
+    previewEl.classList.add('hidden');
+    previewImg.src = '';
+    currentPreviewCard = null;
+  }
 });
 
 function showDeckHoverPreview(card) {
@@ -578,6 +650,81 @@ function loadSampleDeck() {
 
   saveDeckToStorage();
   refresh();
+}
+
+// ---- Collection ----
+
+const COLLECTION_STORAGE_KEY = 'riftbuilder_collection';
+
+function importCollection() {
+  showCollectionIOModal('import', {
+    onExport() { return ''; },
+    onImport(text, formatId) {
+      const result = importCollectionFrom(text, formatId, allCards, sets);
+      if (!result) return;
+      collectionState.clear();
+      for (const [sid, entry] of result) collectionState.set(sid, entry);
+      saveCollectionToStorage();
+      refresh();
+    },
+  });
+}
+
+function exportCollection() {
+  showCollectionIOModal('export', {
+    onExport(formatId) {
+      return exportCollectionAs(collectionState, formatId);
+    },
+    onImport() {},
+  });
+}
+
+function clearCollection() {
+  if (collectionState.size === 0) return;
+  if (!confirm(`Clear your collection (${collectionState.size} unique cards)? This cannot be undone.`)) return;
+  collectionState.clear();
+  filterState.onlyOwned = false;
+  saveCollectionToStorage();
+  refresh();
+}
+
+function saveCollectionToStorage() {
+  try {
+    const obj = {};
+    for (const [sid, { normal, foil }] of collectionState) {
+      obj[sid] = { n: normal, f: foil };
+    }
+    localStorage.setItem(COLLECTION_STORAGE_KEY, JSON.stringify(obj));
+  } catch {
+    // ignore
+  }
+}
+
+function loadCollectionFromStorage() {
+  try {
+    const raw = localStorage.getItem(COLLECTION_STORAGE_KEY);
+    if (!raw) return;
+    const data = JSON.parse(raw);
+
+    const byShortId = new Map();
+    for (const card of allCards) {
+      if (card.metadata?.alternate_art || card.metadata?.overnumbered || card.metadata?.signature) continue;
+      const sid = shortId(card);
+      if (!byShortId.has(sid)) byShortId.set(sid, card);
+    }
+
+    for (const [sid, entry] of Object.entries(data)) {
+      const card = byShortId.get(sid);
+      if (!card) continue;
+      collectionState.set(sid, {
+        card,
+        normal: entry.n ?? 0,
+        foil: entry.f ?? 0,
+      });
+    }
+  } catch {
+    // ignore
+  }
 }
 
 // ---- Boot ----

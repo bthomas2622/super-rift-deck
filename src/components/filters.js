@@ -44,10 +44,11 @@ export function createFilterState() {
     sortDir: 'asc',
     tab: 'All',
     hideBanned: true,
+    onlyOwned: false,
   };
 }
 
-export function renderFilters(container, filterState, indexes, sets, onChange, onChangeHard) {
+export function renderFilters(container, filterState, indexes, sets, onChange, onChangeHard, collectionUI = null) {
   container.innerHTML = '';
 
   // Row 1: Tabs + search
@@ -186,7 +187,7 @@ export function renderFilters(container, filterState, indexes, sets, onChange, o
 
   container.appendChild(row4);
 
-  // Row 5: Banned cards toggle
+  // Row 5: Banned cards toggle + owned toggle
   const row5 = el('div', 'filter-row');
 
   const bannedLabel = document.createElement('label');
@@ -204,6 +205,28 @@ export function renderFilters(container, filterState, indexes, sets, onChange, o
   bannedLabel.appendChild(bannedText);
   row5.appendChild(bannedLabel);
 
+  if (collectionUI) {
+    const ownedLabel = document.createElement('label');
+    ownedLabel.className = 'filter-toggle-label';
+    const ownedCheckbox = document.createElement('input');
+    ownedCheckbox.type = 'checkbox';
+    ownedCheckbox.checked = filterState.onlyOwned;
+    ownedCheckbox.disabled = collectionUI.collectionSize === 0;
+    ownedCheckbox.addEventListener('change', () => {
+      filterState.onlyOwned = ownedCheckbox.checked;
+      onChange();
+    });
+    ownedLabel.appendChild(ownedCheckbox);
+    const ownedText = document.createElement('span');
+    ownedText.textContent = ' Only show cards in my collection';
+    ownedLabel.appendChild(ownedText);
+    if (collectionUI.collectionSize === 0) {
+      ownedLabel.title = 'Import a collection first';
+      ownedLabel.style.opacity = '0.5';
+    }
+    row5.appendChild(ownedLabel);
+  }
+
   const resetBtn = el('button', 'filter-reset-btn');
   resetBtn.textContent = 'Reset Filters';
   resetBtn.addEventListener('click', () => {
@@ -220,15 +243,59 @@ export function renderFilters(container, filterState, indexes, sets, onChange, o
   row5.appendChild(resetBtn);
 
   container.appendChild(row5);
+
+  // Row 6: Collection import/export
+  if (collectionUI) {
+    const row6 = el('div', 'filter-row collection-row');
+
+    const collLabel = el('span', 'filter-label');
+    collLabel.textContent = 'Collection';
+    row6.appendChild(collLabel);
+
+    const importBtn = el('button', 'collection-btn');
+    importBtn.textContent = 'Import';
+    importBtn.addEventListener('click', collectionUI.onImport);
+    row6.appendChild(importBtn);
+
+    const exportBtn = el('button', 'collection-btn');
+    exportBtn.textContent = 'Export';
+    exportBtn.disabled = collectionUI.collectionSize === 0;
+    exportBtn.addEventListener('click', collectionUI.onExport);
+    row6.appendChild(exportBtn);
+
+    const clearBtn = el('button', 'collection-btn collection-btn-danger');
+    clearBtn.textContent = 'Clear';
+    clearBtn.disabled = collectionUI.collectionSize === 0;
+    clearBtn.addEventListener('click', collectionUI.onClear);
+    row6.appendChild(clearBtn);
+
+    const count = el('span', 'collection-count');
+    if (collectionUI.collectionSize === 0) {
+      count.textContent = 'No collection imported';
+    } else {
+      const { totalCards, uniqueCards } = collectionUI;
+      count.textContent = `${totalCards} card${totalCards === 1 ? '' : 's'} (${uniqueCards} unique)`;
+    }
+    row6.appendChild(count);
+
+    container.appendChild(row6);
+  }
 }
 
 /**
  * Apply the current filter state to a list of cards, returning matching cards.
  */
-export function applyFilters(cards, filterState, sets) {
+export function applyFilters(cards, filterState, sets, collection = null) {
   const search = filterState.search.toLowerCase().trim();
+  const onlyOwned = filterState.onlyOwned && collection && collection.size > 0;
 
   return cards.filter((card) => {
+    if (onlyOwned) {
+      const setId = card.set?.set_id ?? '';
+      const col = String(card.collector_number ?? 0).padStart(3, '0');
+      if (!collection.has(`${setId}-${col}`)) return false;
+    }
+
     // Tab filter
     if (filterState.tab !== 'All') {
       const type = card.classification?.type?.toLowerCase() ?? '';
@@ -318,6 +385,7 @@ export function filterStateToParams(state) {
   if (state.sort !== 'collector') params.set('sort', state.sort);
   if (state.sortDir !== 'asc') params.set('dir', state.sortDir);
   if (state.hideBanned) params.set('hideBanned', '1');
+  if (state.onlyOwned) params.set('owned', '1');
   return params;
 }
 
@@ -337,6 +405,7 @@ export function filterStateFromParams(state, params) {
   if (params.has('sort')) state.sort = params.get('sort');
   if (params.has('dir')) state.sortDir = params.get('dir');
   if (params.has('hideBanned')) state.hideBanned = params.get('hideBanned') === '1';
+  if (params.has('owned')) state.onlyOwned = params.get('owned') === '1';
 }
 
 // ---- Sorting ----
