@@ -9,7 +9,7 @@ import { renderDeckPanel } from './components/deck-panel.js';
 import { renderDeckDetails, computeRuneSplit } from './components/deck-details.js';
 import { showIOModal, exportDeckAs, importDeckFrom } from './components/deck-io.js';
 import { renderHandSimulator } from './components/hand-simulator.js';
-import { showCollectionIOModal, exportCollectionAs, importCollectionFrom, shortId } from './components/collection-io.js';
+import { showCollectionIOModal, exportCollectionAs, importCollectionFrom, shortId, variantId } from './components/collection-io.js';
 import { showToast } from './components/toast.js';
 
 // ---- State ----
@@ -353,7 +353,7 @@ function showPreview(card) {
 
 function updatePreviewCollectionDisplay() {
   if (!currentPreviewCard) return;
-  const entry = collectionState.get(shortId(currentPreviewCard));
+  const entry = collectionState.get(variantId(currentPreviewCard));
   const normal = entry?.normal ?? 0;
   const foil = entry?.foil ?? 0;
   previewCountTotalEl.textContent = String(normal + foil);
@@ -365,13 +365,13 @@ function updatePreviewCollectionDisplay() {
 
 function adjustCollection(field, delta) {
   if (!currentPreviewCard) return;
-  const sid = shortId(currentPreviewCard);
-  const entry = collectionState.get(sid) ?? { card: currentPreviewCard, normal: 0, foil: 0 };
+  const vid = variantId(currentPreviewCard);
+  const entry = collectionState.get(vid) ?? { card: currentPreviewCard, normal: 0, foil: 0 };
   entry[field] = Math.max(0, entry[field] + delta);
   if (entry.normal === 0 && entry.foil === 0) {
-    collectionState.delete(sid);
+    collectionState.delete(vid);
   } else {
-    collectionState.set(sid, entry);
+    collectionState.set(vid, entry);
   }
   saveCollectionToStorage();
   updatePreviewCollectionDisplay();
@@ -802,17 +802,18 @@ function loadCollectionFromStorage() {
     if (!raw) return;
     const data = JSON.parse(raw);
 
-    const byShortId = new Map();
+    // Build a variant-id lookup over every card so existing entries (whether
+    // base shortIds or variant-suffixed ids) resolve to the right card.
+    const byVariantId = new Map();
     for (const card of allCards) {
-      if (card.metadata?.alternate_art || card.metadata?.overnumbered || card.metadata?.signature) continue;
-      const sid = shortId(card);
-      if (!byShortId.has(sid)) byShortId.set(sid, card);
+      const vid = variantId(card);
+      if (!byVariantId.has(vid)) byVariantId.set(vid, card);
     }
 
-    for (const [sid, entry] of Object.entries(data)) {
-      const card = byShortId.get(sid);
+    for (const [vid, entry] of Object.entries(data)) {
+      const card = byVariantId.get(vid);
       if (!card) continue;
-      collectionState.set(sid, {
+      collectionState.set(vid, {
         card,
         normal: entry.n ?? 0,
         foil: entry.f ?? 0,

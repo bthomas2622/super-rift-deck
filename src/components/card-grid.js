@@ -7,6 +7,7 @@
  */
 
 import { BANNED_CARDS } from './filters.js';
+import { variantId } from './collection-io.js';
 
 const CHUNK_SIZE = 80;
 
@@ -93,9 +94,7 @@ function makeCardCell(card, { deckState, onAdd, onPreview, showMaxed, collection
   }
 
   if (collection) {
-    const setId = card.set?.set_id ?? '';
-    const col = String(card.collector_number ?? 0).padStart(3, '0');
-    const owned = collection.get(`${setId}-${col}`);
+    const owned = collection.get(variantId(card));
     if (owned) {
       const ownBadge = document.createElement('span');
       ownBadge.className = 'card-owned-badge';

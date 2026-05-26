@@ -13,10 +13,33 @@
 
 // ---- Helpers ----
 
+/** Base printing id like "OGN-007" — set_id + zero-padded collector number. */
 export function shortId(card) {
   const setId = card.set?.set_id ?? '';
   const col = String(card.collector_number ?? 0).padStart(3, '0');
   return `${setId}-${col}`;
+}
+
+/**
+ * Variant-aware id used as the collection-state key. Base prints get just the
+ * shortId; alt-art/signature/overnumbered prints get a trailing letter so
+ * variants of the same physical card number stay distinct.
+ *
+ *   Fury Rune (base)            → "OGN-007"
+ *   Fury Rune (Alternate Art)   → "OGN-007a"
+ *   Signature card              → "<sid>s"
+ *   Overnumbered                → "<sid>o"
+ */
+export function variantId(card) {
+  const sid = shortId(card);
+  if (card.metadata?.alternate_art) return sid + 'a';
+  if (card.metadata?.signature) return sid + 's';
+  if (card.metadata?.overnumbered) return sid + 'o';
+  return sid;
+}
+
+function isBasePrint(card) {
+  return !card.metadata?.alternate_art && !card.metadata?.signature && !card.metadata?.overnumbered;
 }
 
 /** Strip trailing letter suffix from a print number ("041a" → "041"). */
@@ -24,23 +47,40 @@ function stripVariantSuffix(printNum) {
   return String(printNum).replace(/[a-zA-Z]+$/, '');
 }
 
-/** Normalize a shortId by stripping variant-letter suffix from its numeric portion. */
+/** Normalize a base-only shortId by stripping any letter suffix. */
 function normalizeShortId(id) {
   const m = String(id).toUpperCase().match(/^([A-Z]+)-(\d+)[A-Z]*$/);
   if (!m) return String(id).toUpperCase();
   return `${m[1]}-${m[2].padStart(3, '0')}`;
 }
 
+/** Parse a possibly-suffixed printNumber into { col, suffix } e.g. "041a" → { col: "041", suffix: "a" }. */
+function parsePrintNumber(printNum) {
+  const m = String(printNum).match(/^(\d+)([a-zA-Z]*)$/);
+  if (!m) return { col: stripVariantSuffix(printNum).padStart(3, '0'), suffix: '' };
+  return { col: m[1].padStart(3, '0'), suffix: m[2].toLowerCase() };
+}
+
 function buildLookups(allCards) {
-  const byShortId = new Map();
-  const byName = new Map();
+  const byShortIdBase = new Map();   // 'OGN-007' → base Fury Rune
+  const byVariantId = new Map();     // 'OGN-007a' → alt-art Fury Rune; 'OGN-007' → base
+  const byName = new Map();          // 'Fury Rune' → base Fury Rune
   for (const card of allCards) {
-    if (card.metadata?.alternate_art || card.metadata?.overnumbered || card.metadata?.signature) continue;
     const sid = shortId(card);
-    if (!byShortId.has(sid)) byShortId.set(sid, card);
-    if (!byName.has(card.name)) byName.set(card.name, card);
+    const vid = variantId(card);
+    if (!byVariantId.has(vid)) byVariantId.set(vid, card);
+    if (isBasePrint(card)) {
+      if (!byShortIdBase.has(sid)) byShortIdBase.set(sid, card);
+      if (!byName.has(card.name)) byName.set(card.name, card);
+    }
   }
-  return { byShortId, byName };
+  return { byShortIdBase, byVariantId, byName };
+}
+
+/** PA Variant Label/Type strings that indicate an alternate-art printing. */
+function paIsAlternateArt(variantType, variantLabel) {
+  const blob = `${variantType ?? ''} ${variantLabel ?? ''}`.toLowerCase();
+  return /alt(ernate)?\s*art|\balt\b/.test(blob);
 }
 
 /** Build a lowercase set-name → set_id map from a sets array. */
@@ -136,17 +176,71 @@ function headerIndex(headerRow) {
 
 // ---- Importers ----
 
-/** Shared importer for SRD and RGG (identical shape, different header names). */
-function importSimpleCsv(text, allCards, headers) {
-  const { byShortId } = buildLookups(allCards);
+/** Map a Variant column value to its variant-id suffix. */
+function variantSuffixFromLabel(label) {
+  const v = String(label ?? '').trim().toLowerCase();
+  if (v === 'alternate art' || v === 'alt art' || v === 'alt') return 'a';
+  if (v === 'signature') return 's';
+  if (v === 'overnumbered') return 'o';
+  return ''; // Standard / empty / unknown → base
+}
+
+/** Format a variantId suffix back to a Variant column label. */
+function variantLabelFromCard(card) {
+  if (card.metadata?.alternate_art) return 'Alternate Art';
+  if (card.metadata?.signature) return 'Signature';
+  if (card.metadata?.overnumbered) return 'Overnumbered';
+  return 'Standard';
+}
+
+/** Super Rift Deck CSV.
+ *  Headers: CardId, Variant, Name, Set, SetPrefix, CollectorNumber, Rarity,
+ *           Type, Supertype, Domain, Energy, Might, QuantityNormal, QuantityFoil
+ *  Lookup uses CardId (base shortId, e.g. "OGN-041") + Variant column. */
+function importSuperRiftDeck(text, allCards) {
+  const { byShortIdBase, byVariantId } = buildLookups(allCards);
   const result = new Map();
   const rows = parseCSV(text);
   if (rows.length === 0) return result;
 
   const idx = headerIndex(rows[0]);
-  const iId = idx[headers.id];
-  const iNormal = idx[headers.normal];
-  const iFoil = idx[headers.foil];
+  const iId = idx['cardid'];
+  const iVar = idx['variant'];
+  const iNormal = idx['quantitynormal'];
+  const iFoil = idx['quantityfoil'];
+  if (iId == null || iNormal == null || iFoil == null) return result;
+
+  for (let r = 1; r < rows.length; r++) {
+    const row = rows[r];
+    const rawId = row[iId] ?? '';
+    if (!rawId) continue;
+
+    const baseSid = normalizeShortId(rawId);
+    const suffix = iVar != null ? variantSuffixFromLabel(row[iVar]) : '';
+    const vid = baseSid + suffix;
+
+    const normal = parseInt(row[iNormal], 10) || 0;
+    const foil = parseInt(row[iFoil], 10) || 0;
+    if (normal === 0 && foil === 0) continue;
+
+    const card = byVariantId.get(vid) ?? byShortIdBase.get(baseSid);
+    if (!card) continue;
+    addToCollection(result, card, normal, foil);
+  }
+  return result;
+}
+
+/** Riftbound.gg CSV (third-party format — no variant info). */
+function importRiftboundGg(text, allCards) {
+  const { byShortIdBase } = buildLookups(allCards);
+  const result = new Map();
+  const rows = parseCSV(text);
+  if (rows.length === 0) return result;
+
+  const idx = headerIndex(rows[0]);
+  const iId = idx['cardid'];
+  const iNormal = idx['normal'];
+  const iFoil = idx['foil'];
   if (iId == null || iNormal == null || iFoil == null) return result;
 
   for (let r = 1; r < rows.length; r++) {
@@ -156,23 +250,15 @@ function importSimpleCsv(text, allCards, headers) {
     const normal = parseInt(row[iNormal], 10) || 0;
     const foil = parseInt(row[iFoil], 10) || 0;
     if (normal === 0 && foil === 0) continue;
-    const card = byShortId.get(sid);
+    const card = byShortIdBase.get(sid);
     if (!card) continue;
     addToCollection(result, card, normal, foil);
   }
   return result;
 }
 
-function importSuperRiftDeck(text, allCards) {
-  return importSimpleCsv(text, allCards, { id: 'cardid', normal: 'quantitynormal', foil: 'quantityfoil' });
-}
-
-function importRiftboundGg(text, allCards) {
-  return importSimpleCsv(text, allCards, { id: 'cardid', normal: 'normal', foil: 'foil' });
-}
-
 function importPiltoverArchive(text, allCards) {
-  const { byShortId } = buildLookups(allCards);
+  const { byShortIdBase, byVariantId } = buildLookups(allCards);
   const result = new Map();
   const rows = parseCSV(text);
   if (rows.length === 0) return result;
@@ -181,6 +267,8 @@ function importPiltoverArchive(text, allCards) {
   const iId = idx['variant number'];
   const iFoil = idx['foil'];
   const iQty = idx['quantity'];
+  const iType = idx['variant type'];
+  const iLabel = idx['variant label'];
   if (iId == null || iFoil == null || iQty == null) return result;
 
   for (let r = 1; r < rows.length; r++) {
@@ -190,7 +278,15 @@ function importPiltoverArchive(text, allCards) {
     const qty = parseInt(row[iQty], 10) || 0;
     if (qty === 0) continue;
     const isFoil = String(row[iFoil] ?? '').trim().toLowerCase() === 'true';
-    const card = byShortId.get(sid);
+    const variantType = iType != null ? row[iType] : '';
+    const variantLabel = iLabel != null ? row[iLabel] : '';
+
+    let card;
+    if (paIsAlternateArt(variantType, variantLabel)) {
+      card = byVariantId.get(sid + 'a') ?? byShortIdBase.get(sid);
+    } else {
+      card = byShortIdBase.get(sid);
+    }
     if (!card) continue;
     addToCollection(result, card, isFoil ? 0 : qty, isFoil ? qty : 0);
   }
@@ -198,7 +294,7 @@ function importPiltoverArchive(text, allCards) {
 }
 
 function importCardNexus(text, allCards, sets) {
-  const { byShortId } = buildLookups(allCards);
+  const { byShortIdBase, byVariantId } = buildLookups(allCards);
   const setNameLookup = buildSetNameLookup(sets);
   const result = new Map();
   const rows = parseCSV(text);
@@ -217,10 +313,12 @@ function importCardNexus(text, allCards, sets) {
     if (qty === 0) continue;
     const setId = resolveSetId(row[iExp] ?? '', setNameLookup);
     if (!setId) continue;
-    const col = stripVariantSuffix(row[iPrint] ?? '').padStart(3, '0');
+    const { col, suffix } = parsePrintNumber(row[iPrint] ?? '');
     if (!col) continue;
-    const sid = `${setId}-${col}`;
-    const card = byShortId.get(sid);
+    const baseSid = `${setId}-${col}`;
+    const vid = suffix === 'a' ? `${baseSid}a` : baseSid;
+    // Fall back to the base print if the alt-art variant isn't in card data.
+    const card = byVariantId.get(vid) ?? byShortIdBase.get(baseSid);
     if (!card) continue;
     const isFoil = String(row[iFinish] ?? '').trim().toLowerCase() === 'foil';
     addToCollection(result, card, isFoil ? 0 : qty, isFoil ? qty : 0);
@@ -229,34 +327,67 @@ function importCardNexus(text, allCards, sets) {
 }
 
 function addToCollection(map, card, normal, foil) {
-  const sid = shortId(card);
-  const existing = map.get(sid);
+  const vid = variantId(card);
+  const existing = map.get(vid);
   if (existing) {
     existing.normal += normal;
     existing.foil += foil;
   } else {
-    map.set(sid, { card, normal, foil });
+    map.set(vid, { card, normal, foil });
   }
 }
 
 // ---- Exporters ----
 
-/** Iterate collection entries sorted by shortId for stable output. */
+/** Iterate collection entries sorted by variantId for stable output. */
 function sortedEntries(collection) {
   return [...collection.entries()].sort((a, b) => a[0].localeCompare(b[0]));
 }
 
+/** SRD/RGG can't represent variants — collapse alt-art counts into the base shortId. */
+function collapseToBase(collection) {
+  const out = new Map(); // shortId → { card, normal, foil }
+  for (const { card, normal, foil } of collection.values()) {
+    const sid = shortId(card);
+    const existing = out.get(sid);
+    if (existing) {
+      existing.normal += normal;
+      existing.foil += foil;
+    } else {
+      out.set(sid, { card, normal, foil });
+    }
+  }
+  return out;
+}
+
 function exportSuperRiftDeck(collection) {
-  const rows = [['CardId', 'QuantityNormal', 'QuantityFoil', 'CardName', 'Set']];
-  for (const [sid, { card, normal, foil }] of sortedEntries(collection)) {
-    rows.push([sid, normal, foil, card.name, card.set?.name ?? card.set?.label ?? '']);
+  const rows = [['CardId', 'Variant', 'Name', 'Set', 'SetPrefix', 'CollectorNumber', 'Rarity', 'Type', 'Supertype', 'Domain', 'Energy', 'Might', 'QuantityNormal', 'QuantityFoil']];
+  for (const [, { card, normal, foil }] of sortedEntries(collection)) {
+    const baseSid = shortId(card);
+    const domain = (card.classification?.domain ?? []).join('/');
+    rows.push([
+      baseSid,
+      variantLabelFromCard(card),
+      card.name ?? '',
+      card.set?.name ?? card.set?.label ?? '',
+      card.set?.set_id ?? '',
+      String(card.collector_number ?? 0).padStart(3, '0'),
+      card.classification?.rarity ?? '',
+      card.classification?.type ?? '',
+      card.classification?.supertype ?? '',
+      domain,
+      card.attributes?.energy ?? '',
+      card.attributes?.might ?? '',
+      normal,
+      foil,
+    ]);
   }
   return toCSV(rows);
 }
 
 function exportRiftboundGg(collection) {
   const rows = [['CardId', 'Normal', 'Foil', 'Name', 'Set']];
-  for (const [sid, { card, normal, foil }] of sortedEntries(collection)) {
+  for (const [sid, { card, normal, foil }] of sortedEntries(collapseToBase(collection))) {
     rows.push([sid, normal, foil, card.name, card.set?.name ?? card.set?.label ?? '']);
   }
   return toCSV(rows);
@@ -264,15 +395,19 @@ function exportRiftboundGg(collection) {
 
 function exportPiltoverArchive(collection) {
   const rows = [['Variant Number', 'Card Name', 'Set', 'Set Prefix', 'Rarity', 'Variant Type', 'Variant Label', 'Foil', 'Quantity', 'Language', 'Condition', 'Grading Company', 'Grading Value', 'Grading Label', 'Notes']];
-  for (const [sid, { card, normal, foil }] of sortedEntries(collection)) {
+  for (const [, { card, normal, foil }] of sortedEntries(collection)) {
+    const sid = shortId(card);
     const setName = card.set?.name ?? card.set?.label ?? '';
     const setPrefix = card.set?.set_id ?? '';
     const rarity = card.classification?.rarity ?? '';
+    const isAlt = !!card.metadata?.alternate_art;
+    const variantType = 'Standard';
+    const variantLabel = isAlt ? 'Alternate Art' : 'Standard';
     if (normal > 0) {
-      rows.push([sid, card.name, setName, setPrefix, rarity, 'Standard', 'Standard', 'false', normal, 'English', '', '', '', '', '']);
+      rows.push([sid, card.name, setName, setPrefix, rarity, variantType, variantLabel, 'false', normal, 'English', '', '', '', '', '']);
     }
     if (foil > 0) {
-      rows.push([sid, card.name, setName, setPrefix, rarity, 'Standard', 'Standard', 'true', foil, 'English', '', '', '', '', '']);
+      rows.push([sid, card.name, setName, setPrefix, rarity, variantType, variantLabel, 'true', foil, 'English', '', '', '', '', '']);
     }
   }
   return toCSV(rows);
@@ -281,7 +416,8 @@ function exportPiltoverArchive(collection) {
 function exportCardNexus(collection) {
   const rows = [['totalQtyOwned', 'name', 'printNumber', 'finish', 'variant', 'expansion', 'game', 'condition', 'language', 'price', 'riotId']];
   for (const [, { card, normal, foil }] of sortedEntries(collection)) {
-    const printNumber = String(card.collector_number ?? 0).padStart(3, '0');
+    const baseCol = String(card.collector_number ?? 0).padStart(3, '0');
+    const printNumber = card.metadata?.alternate_art ? `${baseCol}a` : baseCol;
     const setName = card.set?.name ?? card.set?.label ?? '';
     const expansion = setName ? `${setName} - Main Set` : '';
     if (normal > 0) {

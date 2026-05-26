@@ -255,14 +255,20 @@ function makeCardEntryWithQty(name, qty, energy, onMinus, onPlus, onRemove, onHo
   return li;
 }
 
-/** Returns total owned (normal + foil) for a card, or null if no collection tracked. */
+/** Returns total owned (normal + foil) across all printings sharing this card's
+ *  shortId — any variant satisfies a deck slot in play. Returns null if no
+ *  collection tracked. */
 function ownedFor(card, collection) {
   if (!collection || collection.size === 0) return null;
   const setId = card.set?.set_id ?? '';
   const col = String(card.collector_number ?? 0).padStart(3, '0');
-  const entry = collection.get(`${setId}-${col}`);
-  if (!entry) return 0;
-  return (entry.normal ?? 0) + (entry.foil ?? 0);
+  const base = `${setId}-${col}`;
+  let total = 0;
+  for (const vid of [base, base + 'a', base + 's', base + 'o']) {
+    const entry = collection.get(vid);
+    if (entry) total += (entry.normal ?? 0) + (entry.foil ?? 0);
+  }
+  return total;
 }
 
 function makeOwnedBadge(owned, needed) {

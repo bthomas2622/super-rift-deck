@@ -313,7 +313,12 @@ export function applyFilters(cards, filterState, sets, collection = null) {
     if (onlyOwned) {
       const setId = card.set?.set_id ?? '';
       const col = String(card.collector_number ?? 0).padStart(3, '0');
-      if (!collection.has(`${setId}-${col}`)) return false;
+      const sid = `${setId}-${col}`;
+      const vid = card.metadata?.alternate_art ? sid + 'a'
+        : card.metadata?.signature ? sid + 's'
+        : card.metadata?.overnumbered ? sid + 'o'
+        : sid;
+      if (!collection.has(vid)) return false;
     }
 
     // Tab filter
