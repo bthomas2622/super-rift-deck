@@ -385,7 +385,7 @@ export const FORMATS = [
     id: 'superriftdeck',
     label: 'Super Rift Deck',
     fileTypes: [{ id: 'txt', label: 'Text (.txt)' }],
-    example: 'Text, one card per line: "<count> <name>"\ne.g. 1 Jax - Grandmaster\n     3 Fury Rune',
+    example: 'Text — sections followed by cards, one per line: <count> <name>\nLegend:\n1 Jinx - Loose Cannon\n\nChampion:\n1 Jinx - Demolitionist\n\nMain Deck:\n3 Flame Chompers',
   },
   {
     id: 'riftboundgg',
@@ -394,25 +394,25 @@ export const FORMATS = [
       { id: 'txt', label: 'Text (.txt)' },
       { id: 'json', label: 'JSON (.json)' },
     ],
-    example: 'Text: "<count> <name>", or JSON exported from Riftbound.gg',
+    example: 'Text — one card per line: <count> <name> (<SET>-<number>)\ne.g. 1 Jinx - Loose Cannon (OGN-251)\n     3 Flame Chompers (OGN-006)\n\nJSON — exported directly from Riftbound.gg',
   },
   {
     id: 'piltoverarchive',
     label: 'PiltoverArchive',
     fileTypes: [{ id: 'txt', label: 'Text (.txt)' }],
-    example: 'Text, one card per line: "<count> <name>"\ne.g. 1 Jax - Grandmaster\n     3 Fury Rune',
+    example: 'Text — sections followed by cards, one per line: <count> <name>\nLegend:\n1 Jinx, Loose Cannon\n\nChampion:\n1 Jinx, Demolitionist\n\nMain Deck:\n3 Flame Chompers',
   },
   {
     id: 'riftatlas',
     label: 'Rift Atlas',
     fileTypes: [{ id: 'txt', label: 'Text (.txt)' }],
-    example: 'Text, one card per line: "<count> <name>"\ne.g. 1 Jax - Grandmaster\n     3 Fury Rune',
+    example: 'Text — sections followed by cards, one per line: <count> <name>\nLegend:\n1 Jinx, Loose Cannon\n\nChampion:\n1 Jinx, Rebel\n\nMain Deck:\n3 Flame Chompers',
   },
   {
     id: 'cardnexus',
     label: 'CardNexus',
     fileTypes: [{ id: 'txt', label: 'Text (.txt)' }],
-    example: 'Text exported from CardNexus, one card per line: "<count> <name> [(<set>)] [#<number>]"',
+    example: 'Text — one card per line: <count> <name> (<SET>) #<number>\ne.g. 1 Jinx - Loose Cannon (OGN) #251\n     3 Flame Chompers (OGN) #006',
   },
 ];
 

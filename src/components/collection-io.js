@@ -485,23 +485,23 @@ function exportGenericList(collection) {
 export const COLLECTION_FORMATS = [
   {
     id: 'superriftdeck', label: 'Super Rift Deck', ext: 'csv',
-    example: 'CSV with header: CardId,Variant,Name,Set,SetPrefix,CollectorNumber,Rarity,Type,Supertype,Domain,Energy,Might,QuantityNormal,QuantityFoil',
+    example: 'CSV — header row required:\nCardId,Variant,Name,Set,SetPrefix,CollectorNumber,Rarity,Type,Supertype,Domain,Energy,Might,QuantityNormal,QuantityFoil\ne.g. OGN-001,Standard,Blazing Scorcher,Origins,OGN,001,Common,Unit,,Fury,5,5,4,0',
   },
   {
     id: 'riftboundgg', label: 'Riftbound.gg', ext: 'csv',
-    example: 'CSV with header: CardId,Normal,Foil,Name,Set',
+    example: 'CSV — header row required:\nCardId,Normal,Foil,Name,Set\ne.g. OGN-001,4,0,Blazing Scorcher,Origins',
   },
   {
     id: 'piltoverarchive', label: 'PiltoverArchive', ext: 'csv',
-    example: 'CSV with header: Variant Number,Card Name,Set,Set Prefix,Rarity,Variant Type,Variant Label,Foil,Quantity,…',
+    example: 'CSV — header row required:\nVariant Number,Card Name,Set,Set Prefix,Rarity,Variant Type,Variant Label,Foil,Quantity,Language,Condition,Grading Company,Grading Value,Grading Label,Notes\ne.g. OGN-001,Blazing Scorcher,Origins,OGN,Common,Standard,Standard,false,4,English,,,,, ',
   },
   {
     id: 'cardnexus', label: 'CardNexus', ext: 'csv',
-    example: 'CSV with header: totalQtyOwned,name,printNumber,finish,variant,expansion,…',
+    example: 'CSV — header row required:\ntotalQtyOwned,name,printNumber,finish,variant,expansion,game,condition,language,price,finishes,rarity,riotId,cardType,superType,domains,tags,orientation,energyCost,mightCost\ne.g. 3,Meditation,048,Standard,,Origins - Main Set,Riftbound: League of Legends TCG,Near Mint,en,0.17,Standard,Common,OGN-048,Spell,,Calm,,portrait,2,',
   },
   {
     id: 'genericlist', label: 'Generic List', ext: 'txt',
-    example: 'Text, one card per line: "<count> <name> (<SET>) #<number> [*F*]"\ne.g. 3 Meditation (OGN) #048\n     1 Volibear - Furious (OGN) #041a *F*',
+    example: 'Text — one card per line: <count> <name> (<SET>) #<number> [*F*]\ne.g. 4 Blazing Scorcher (OGN) #001\n     3 Tideturner (OGN) #199 *F*\n     1 Volibear - Furious (OGN) #041a *F*',
   },
 ];
 
