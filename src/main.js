@@ -7,6 +7,7 @@ import { createFilterState, renderFilters, applyFilters, filterStateToParams, fi
 import { renderCardGrid } from './components/card-grid.js';
 import { renderDeckPanel } from './components/deck-panel.js';
 import { renderDeckDetails, computeRuneSplit } from './components/deck-details.js';
+import { renderDeckPrimer } from './components/deck-primer.js';
 import { showIOModal, exportDeckAs, importDeckFrom } from './components/deck-io.js';
 import { renderHandSimulator } from './components/hand-simulator.js';
 import { showCollectionIOModal, exportCollectionAs, importCollectionFrom, shortId, variantId } from './components/collection-io.js';
@@ -40,6 +41,7 @@ const filtersEl = document.getElementById('filters');
 const gridEl = document.getElementById('card-grid');
 const deckEl = document.getElementById('deck-panel');
 const detailsEl = document.getElementById('deck-details');
+const primerEl = document.getElementById('deck-primer');
 const previewEl = document.getElementById('card-preview');
 const previewImg = document.getElementById('card-preview-img');
 const previewNameEl = document.getElementById('card-preview-name');
@@ -53,6 +55,7 @@ const previewRemoveFoilBtn = document.getElementById('card-preview-remove-foil')
 const viewCardBtn = document.getElementById('view-card');
 const viewDeckBtn = document.getElementById('view-deck');
 const viewDetailsBtn = document.getElementById('view-details');
+const viewPrimerBtn = document.getElementById('view-primer');
 const viewHandBtn = document.getElementById('view-hand');
 const activeFiltersEl = document.getElementById('active-filters');
 const deckGridEl = document.getElementById('deck-grid');
@@ -75,7 +78,7 @@ document.addEventListener('click', (e) => {
   }
 });
 
-let activeView = 'card'; // 'card', 'deck', 'details', or 'hand'
+let activeView = 'card'; // 'card', 'deck', 'details', 'primer', or 'hand'
 
 // ---- Deck panel collapse/expand ----
 
@@ -103,17 +106,22 @@ function setActiveView(view) {
   viewCardBtn.classList.toggle('active', view === 'card');
   viewDeckBtn.classList.toggle('active', view === 'deck');
   viewDetailsBtn.classList.toggle('active', view === 'details');
+  viewPrimerBtn.classList.toggle('active', view === 'primer');
   viewHandBtn.classList.toggle('active', view === 'hand');
   gridEl.classList.toggle('hidden', view !== 'card');
-  filtersEl.classList.toggle('hidden', view === 'details' || view === 'hand');
+  filtersEl.classList.toggle('hidden', view === 'details' || view === 'primer' || view === 'hand');
   deckGridEl.classList.toggle('hidden', view !== 'deck');
   detailsEl.classList.toggle('hidden', view !== 'details');
+  primerEl.classList.toggle('hidden', view !== 'primer');
   handSimEl.classList.toggle('hidden', view !== 'hand');
   if (view === 'deck') {
     renderDeckGrid();
   }
   if (view === 'details') {
     renderDeckDetails(detailsEl, deckState);
+  }
+  if (view === 'primer') {
+    renderDeckPrimer(primerEl, deckState);
   }
   if (view === 'hand') {
     renderHandSimulator(handSimEl, deckState, showPreview);
@@ -123,6 +131,7 @@ function setActiveView(view) {
 viewCardBtn.addEventListener('click', () => setActiveView('card'));
 viewDeckBtn.addEventListener('click', () => setActiveView('deck'));
 viewDetailsBtn.addEventListener('click', () => setActiveView('details'));
+viewPrimerBtn.addEventListener('click', () => setActiveView('primer'));
 viewHandBtn.addEventListener('click', () => setActiveView('hand'));
 
 // ---- Data loading ----
@@ -321,6 +330,9 @@ function refresh() {
   }
   if (activeView === 'details') {
     renderDeckDetails(detailsEl, deckState);
+  }
+  if (activeView === 'primer') {
+    renderDeckPrimer(primerEl, deckState);
   }
   if (activeView === 'hand') {
     renderHandSimulator(handSimEl, deckState, showPreview);
