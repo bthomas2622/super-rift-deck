@@ -1461,6 +1461,45 @@ body {
   box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6), 0 0 20px rgba(200, 170, 110, 0.15);
 }
 
+.card-preview-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(20, 16, 10, 0.82);
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  color: #fff;
+  font-size: 34px;
+  width: 60px;
+  height: 96px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  z-index: 1;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+.card-preview-nav:hover {
+  background: rgba(0, 0, 0, 0.95);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.card-preview-nav.hidden {
+  display: none;
+}
+
+.card-preview-nav-prev {
+  left: 20px;
+}
+
+.card-preview-nav-next {
+  right: 20px;
+}
+
 /* ---- Loading / Empty states ---- */
 .loading-msg,
 .empty-msg {

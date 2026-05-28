@@ -246,13 +246,14 @@ export function computeRuneSplit(deckState) {
     }
   }
 
-  if (domainCounts.size === 0 || totalPower === 0) return [];
+  const totalDomainPower = Array.from(domainCounts.values()).reduce((s, v) => s + v, 0);
+  if (domainCounts.size === 0 || totalDomainPower === 0) return [];
 
   const TOTAL_RUNES = 12;
   const sorted = Array.from(domainCounts.entries()).sort((a, b) => b[1] - a[1]);
   const rawRunes = sorted.map(([domain, count]) => ({
     domain,
-    exact: (count / totalPower) * TOTAL_RUNES,
+    exact: (count / totalDomainPower) * TOTAL_RUNES,
   }));
 
   const allocated = rawRunes.map(r => ({ ...r, runes: Math.floor(r.exact) }));

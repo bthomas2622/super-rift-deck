@@ -32,14 +32,14 @@ export function renderCardGrid(container, cards, deckState, onAdd, onPreview, { 
     return;
   }
 
-  const ctx = { deckState, onAdd, onPreview, showMaxed, collection };
+  const ctx = { deckState, onAdd, onPreview, showMaxed, collection, cards };
   let cursor = 0;
 
   const appendChunk = () => {
     const end = Math.min(cursor + CHUNK_SIZE, cards.length);
     const fragment = document.createDocumentFragment();
     for (let i = cursor; i < end; i++) {
-      fragment.appendChild(makeCardCell(cards[i], ctx));
+      fragment.appendChild(makeCardCell(cards[i], i, ctx));
     }
     container.appendChild(fragment);
     cursor = end;
@@ -70,7 +70,7 @@ export function renderCardGrid(container, cards, deckState, onAdd, onPreview, { 
   }
 }
 
-function makeCardCell(card, { deckState, onAdd, onPreview, showMaxed, collection }) {
+function makeCardCell(card, index, { deckState, onAdd, onPreview, showMaxed, collection, cards }) {
   const cell = document.createElement('div');
   cell.className = 'card-cell';
 
@@ -118,7 +118,7 @@ function makeCardCell(card, { deckState, onAdd, onPreview, showMaxed, collection
   });
   cell.addEventListener('contextmenu', (e) => {
     e.preventDefault();
-    onPreview(card);
+    onPreview(card, cards, index);
   });
 
   return cell;

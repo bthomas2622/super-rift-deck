@@ -52,6 +52,8 @@ const previewAddNormalBtn = document.getElementById('card-preview-add-normal');
 const previewRemoveNormalBtn = document.getElementById('card-preview-remove-normal');
 const previewAddFoilBtn = document.getElementById('card-preview-add-foil');
 const previewRemoveFoilBtn = document.getElementById('card-preview-remove-foil');
+const previewPrevBtn = document.getElementById('card-preview-prev');
+const previewNextBtn = document.getElementById('card-preview-next');
 const viewCardBtn = document.getElementById('view-card');
 const viewDeckBtn = document.getElementById('view-deck');
 const viewDetailsBtn = document.getElementById('view-details');
@@ -353,14 +355,32 @@ function renderDeckGrid() {
 // ---- Card preview ----
 
 let currentPreviewCard = null;
+let previewCards = null;
+let previewIndex = -1;
 
-function showPreview(card) {
+function showPreview(card, cards = null, index = -1) {
   currentPreviewCard = card;
+  previewCards = cards;
+  previewIndex = index;
   previewImg.src = card.media?.local_image ?? card.media?.image_url ?? '';
   previewImg.alt = card.name ?? 'Card preview';
   previewNameEl.textContent = card.name ?? '';
   updatePreviewCollectionDisplay();
+  updatePreviewNavButtons();
   previewEl.classList.remove('hidden');
+}
+
+function updatePreviewNavButtons() {
+  const hasContext = previewCards !== null && previewIndex !== -1;
+  previewPrevBtn.classList.toggle('hidden', !hasContext || previewIndex <= 0);
+  previewNextBtn.classList.toggle('hidden', !hasContext || previewIndex >= previewCards.length - 1);
+}
+
+function navigatePreview(delta) {
+  if (!previewCards) return;
+  const next = previewIndex + delta;
+  if (next < 0 || next >= previewCards.length) return;
+  showPreview(previewCards[next], previewCards, next);
 }
 
 function updatePreviewCollectionDisplay() {
@@ -394,6 +414,8 @@ previewAddNormalBtn.addEventListener('click', (e) => { e.stopPropagation(); adju
 previewRemoveNormalBtn.addEventListener('click', (e) => { e.stopPropagation(); adjustCollection('normal', -1); });
 previewAddFoilBtn.addEventListener('click', (e) => { e.stopPropagation(); adjustCollection('foil', 1); });
 previewRemoveFoilBtn.addEventListener('click', (e) => { e.stopPropagation(); adjustCollection('foil', -1); });
+previewPrevBtn.addEventListener('click', (e) => { e.stopPropagation(); navigatePreview(-1); });
+previewNextBtn.addEventListener('click', (e) => { e.stopPropagation(); navigatePreview(1); });
 
 previewEl.addEventListener('click', (e) => {
   // Only close on clicks on the overlay background or the image — not the side panel.
@@ -401,6 +423,21 @@ previewEl.addEventListener('click', (e) => {
     previewEl.classList.add('hidden');
     previewImg.src = '';
     currentPreviewCard = null;
+    previewCards = null;
+    previewIndex = -1;
+  }
+});
+
+document.addEventListener('keydown', (e) => {
+  if (previewEl.classList.contains('hidden')) return;
+  if (e.key === 'ArrowLeft') navigatePreview(-1);
+  else if (e.key === 'ArrowRight') navigatePreview(1);
+  else if (e.key === 'Escape') {
+    previewEl.classList.add('hidden');
+    previewImg.src = '';
+    currentPreviewCard = null;
+    previewCards = null;
+    previewIndex = -1;
   }
 });
 
