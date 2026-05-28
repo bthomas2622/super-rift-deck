@@ -6,7 +6,15 @@
       "Bash(awk -F',' 'NR>1 {print $6 \"|\" $7}' \"exampleimportexport/collection/piltoverarchive/piltover-archive-collection.csv\")",
       "WebFetch(domain:riftbound.leagueoflegends.com)",
       "Bash(node *)",
-      "Bash(powershell *)"
+      "Bash(powershell *)",
+      "Bash(base64 -w0)",
+      "Bash(cp src/components/collection-io.js /tmp/cio.txt)",
+      "Read(//tmp/**)",
+      "Bash(base64 -w0 src/components/collection-io.js)",
+      "Bash(base64 -w0 src/utils/short-id.js)",
+      "Bash(base64 -w0 public/data/cards.json)",
+      "Bash(grep -o '\"id\": \"[^\"]*\", *$\\\\|\"shortId\": \"[^\"]*\"' public/data/cards.json)",
+      "Bash(python3 -c ' *)"
     ]
   }
 }

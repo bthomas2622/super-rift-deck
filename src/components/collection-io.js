@@ -6,6 +6,7 @@
  *   - Riftbound.gg:     CardId,Normal,Foil,Name,Set
  *   - PiltoverArchive:  Variant Number,Card Name,Set,Set Prefix,Rarity,Variant Type,Variant Label,Foil,Quantity,...
  *   - CardNexus:        totalQtyOwned,name,printNumber,finish,variant,expansion,...
+ *   - Generic List:     "<count> <name> (<SET>) #<number>[suffix] [*F*]" (decklist text, one card per line)
  *
  * Collection state shape: Map<shortId, { card, normal, foil }>
  *   shortId is the base printing id like "OGN-001" (no letter suffix).
@@ -326,6 +327,38 @@ function importCardNexus(text, allCards, sets) {
   return result;
 }
 
+/** Generic List — decklist text, one card per line:
+ *    "<count> <name> (<SET>) #<number>[suffix] [*F*]"
+ *  e.g. "3 Meditation (OGN) #048", "1 Volibear - Furious (alt) (OGN) #041a *F*".
+ *  The set code is the last parenthesized group before "#" (the name itself may
+ *  contain parens, e.g. "Recruit (NX)"). A trailing "a" on the number marks
+ *  alternate art; "*F*" marks foil. */
+function importGenericList(text, allCards) {
+  const { byShortIdBase, byVariantId } = buildLookups(allCards);
+  const result = new Map();
+  const lineRe = /^(\d+)\s+(.+)\s+\(([^()]+)\)\s+#(\S+)(\s+\*F\*)?\s*$/;
+
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line) continue;
+    const m = lineRe.exec(line);
+    if (!m) continue;
+    const count = parseInt(m[1], 10) || 0;
+    if (count === 0) continue;
+    const setId = m[3].trim().toUpperCase();
+    const isFoil = !!m[5];
+    const { col, suffix } = parsePrintNumber(m[4]);
+    if (!col) continue;
+    const baseSid = `${setId}-${col}`;
+    const vid = suffix ? `${baseSid}${suffix}` : baseSid;
+    // Fall back to the base print if the variant isn't in card data.
+    const card = byVariantId.get(vid) ?? byShortIdBase.get(baseSid);
+    if (!card) continue;
+    addToCollection(result, card, isFoil ? 0 : count, isFoil ? count : 0);
+  }
+  return result;
+}
+
 function addToCollection(map, card, normal, foil) {
   const vid = variantId(card);
   const existing = map.get(vid);
@@ -430,13 +463,46 @@ function exportCardNexus(collection) {
   return toCSV(rows);
 }
 
+function exportGenericList(collection) {
+  const lines = [];
+  for (const [, { card, normal, foil }] of sortedEntries(collection)) {
+    const baseCol = String(card.collector_number ?? 0).padStart(3, '0');
+    let suffix = '';
+    if (card.metadata?.alternate_art) suffix = 'a';
+    else if (card.metadata?.signature) suffix = 's';
+    else if (card.metadata?.overnumbered) suffix = 'o';
+    const printNum = `${baseCol}${suffix}`;
+    const setId = card.set?.set_id ?? '';
+    const head = `${card.name} (${setId}) #${printNum}`;
+    if (normal > 0) lines.push(`${normal} ${head}`);
+    if (foil > 0) lines.push(`${foil} ${head} *F*`);
+  }
+  return lines.join('\n');
+}
+
 // ---- Format registry ----
 
 export const COLLECTION_FORMATS = [
-  { id: 'superriftdeck', label: 'Super Rift Deck' },
-  { id: 'riftboundgg', label: 'Riftbound.gg' },
-  { id: 'piltoverarchive', label: 'PiltoverArchive' },
-  { id: 'cardnexus', label: 'CardNexus' },
+  {
+    id: 'superriftdeck', label: 'Super Rift Deck', ext: 'csv',
+    example: 'CSV with header: CardId,Variant,Name,Set,SetPrefix,CollectorNumber,Rarity,Type,Supertype,Domain,Energy,Might,QuantityNormal,QuantityFoil',
+  },
+  {
+    id: 'riftboundgg', label: 'Riftbound.gg', ext: 'csv',
+    example: 'CSV with header: CardId,Normal,Foil,Name,Set',
+  },
+  {
+    id: 'piltoverarchive', label: 'PiltoverArchive', ext: 'csv',
+    example: 'CSV with header: Variant Number,Card Name,Set,Set Prefix,Rarity,Variant Type,Variant Label,Foil,Quantity,…',
+  },
+  {
+    id: 'cardnexus', label: 'CardNexus', ext: 'csv',
+    example: 'CSV with header: totalQtyOwned,name,printNumber,finish,variant,expansion,…',
+  },
+  {
+    id: 'genericlist', label: 'Generic List', ext: 'txt',
+    example: 'Text, one card per line: "<count> <name> (<SET>) #<number> [*F*]"\ne.g. 3 Meditation (OGN) #048\n     1 Volibear - Furious (OGN) #041a *F*',
+  },
 ];
 
 const exporters = {
@@ -444,6 +510,7 @@ const exporters = {
   riftboundgg: exportRiftboundGg,
   piltoverarchive: exportPiltoverArchive,
   cardnexus: exportCardNexus,
+  genericlist: exportGenericList,
 };
 
 const importers = {
@@ -451,6 +518,7 @@ const importers = {
   riftboundgg: (text, cards) => importRiftboundGg(text, cards),
   piltoverarchive: (text, cards) => importPiltoverArchive(text, cards),
   cardnexus: (text, cards, sets) => importCardNexus(text, cards, sets),
+  genericlist: (text, cards) => importGenericList(text, cards),
 };
 
 export function exportCollectionAs(collection, formatId) {
@@ -497,6 +565,12 @@ export function showCollectionIOModal(mode, { onExport, onImport }) {
   }
   modal.appendChild(formatSelect);
 
+  // Shows the expected file format for the selected source format.
+  const formatHint = document.createElement('p');
+  formatHint.className = 'io-format-hint';
+  formatHint.style.display = 'none';
+  modal.appendChild(formatHint);
+
   // Export uses a textarea preview; import uses a file picker.
   const textarea = document.createElement('textarea');
   textarea.className = 'io-textarea';
@@ -511,7 +585,7 @@ export function showCollectionIOModal(mode, { onExport, onImport }) {
   if (mode === 'import') {
     fileInput = document.createElement('input');
     fileInput.type = 'file';
-    fileInput.accept = '.csv,text/csv';
+    fileInput.accept = '.csv,.txt,text/csv,text/plain';
     fileInput.style.display = 'none';
 
     const fileRow = document.createElement('div');
@@ -593,11 +667,13 @@ export function showCollectionIOModal(mode, { onExport, onImport }) {
     downloadBtn.addEventListener('click', () => {
       const formatId = formatSelect.value;
       const fmt = COLLECTION_FORMATS.find(f => f.id === formatId);
-      const blob = new Blob([textarea.value], { type: 'text/csv' });
+      const ext = fmt?.ext ?? 'csv';
+      const mime = ext === 'txt' ? 'text/plain' : 'text/csv';
+      const blob = new Blob([textarea.value], { type: mime });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `collection_${fmt?.label?.replace(/[^a-z0-9]/gi, '_') ?? 'export'}.csv`;
+      a.download = `collection_${fmt?.label?.replace(/[^a-z0-9]/gi, '_') ?? 'export'}.${ext}`;
       a.click();
       URL.revokeObjectURL(url);
     });
@@ -620,11 +696,22 @@ export function showCollectionIOModal(mode, { onExport, onImport }) {
     const formatId = formatSelect.value;
     if (!formatId) {
       textarea.style.display = 'none';
+      formatHint.style.display = 'none';
       if (fileInput?._row) fileInput._row.style.display = 'none';
       actionBtn.style.display = 'none';
       if (downloadBtn) downloadBtn.style.display = 'none';
       return;
     }
+    const fmt = COLLECTION_FORMATS.find(f => f.id === formatId);
+    const ext = fmt?.ext ?? 'csv';
+
+    if (fmt?.example) {
+      formatHint.textContent = `Expected format:\n${fmt.example}`;
+      formatHint.style.display = '';
+    } else {
+      formatHint.style.display = 'none';
+    }
+
     actionBtn.style.display = '';
     if (downloadBtn) downloadBtn.style.display = '';
     if (mode === 'export') {
@@ -633,6 +720,7 @@ export function showCollectionIOModal(mode, { onExport, onImport }) {
       textarea.value = text ?? '';
     } else if (fileInput?._row) {
       fileInput._row.style.display = '';
+      if (fileBtn) fileBtn.textContent = `Choose ${ext.toUpperCase()}...`;
     }
   });
 }

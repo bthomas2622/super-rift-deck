@@ -385,6 +385,7 @@ export const FORMATS = [
     id: 'superriftdeck',
     label: 'Super Rift Deck',
     fileTypes: [{ id: 'txt', label: 'Text (.txt)' }],
+    example: 'Text, one card per line: "<count> <name>"\ne.g. 1 Jax - Grandmaster\n     3 Fury Rune',
   },
   {
     id: 'riftboundgg',
@@ -393,21 +394,25 @@ export const FORMATS = [
       { id: 'txt', label: 'Text (.txt)' },
       { id: 'json', label: 'JSON (.json)' },
     ],
+    example: 'Text: "<count> <name>", or JSON exported from Riftbound.gg',
   },
   {
     id: 'piltoverarchive',
     label: 'PiltoverArchive',
     fileTypes: [{ id: 'txt', label: 'Text (.txt)' }],
+    example: 'Text, one card per line: "<count> <name>"\ne.g. 1 Jax - Grandmaster\n     3 Fury Rune',
   },
   {
     id: 'riftatlas',
     label: 'Rift Atlas',
     fileTypes: [{ id: 'txt', label: 'Text (.txt)' }],
+    example: 'Text, one card per line: "<count> <name>"\ne.g. 1 Jax - Grandmaster\n     3 Fury Rune',
   },
   {
     id: 'cardnexus',
     label: 'CardNexus',
     fileTypes: [{ id: 'txt', label: 'Text (.txt)' }],
+    example: 'Text exported from CardNexus, one card per line: "<count> <name> [(<set>)] [#<number>]"',
   },
 ];
 
@@ -476,6 +481,11 @@ export function showIOModal(mode, { onExport, onImport, deckState }) {
     formatSelect.appendChild(o);
   }
   modal.appendChild(formatSelect);
+
+  const formatHint = document.createElement('p');
+  formatHint.className = 'io-format-hint';
+  formatHint.style.display = 'none';
+  modal.appendChild(formatHint);
 
   // Step 2: file type selection (shown when format has multiple types)
   const ftLabel = document.createElement('label');
@@ -615,10 +625,18 @@ export function showIOModal(mode, { onExport, onImport, deckState }) {
     if (!fmt) {
       ftLabel.style.display = 'none';
       ftSelect.style.display = 'none';
+      formatHint.style.display = 'none';
       textarea.style.display = 'none';
       actionBtn.style.display = 'none';
       if (downloadBtn) downloadBtn.style.display = 'none';
       return;
+    }
+
+    if (fmt.example) {
+      formatHint.textContent = `Expected format:\n${fmt.example}`;
+      formatHint.style.display = '';
+    } else {
+      formatHint.style.display = 'none';
     }
 
     if (fmt.fileTypes.length > 1) {
